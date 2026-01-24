@@ -5,34 +5,37 @@ source ./util.sh
 ################################################################################
 # Variable Defintion
 ################################################################################
-# General
-MAGMA_R="${MAGMA_R:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" 2>/dev/null && pwd)}"
-PIRATE="${PIRATE:-${MAGMA_R}/tools/pirate}"
+setup_variables() {
+    # General
+    MAGMA_R="${MAGMA_R:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" 2>/dev/null && pwd)}"
+    PIRATE="${PIRATE:-${MAGMA_R}/tools/pirate}"
 
-# Magma Settings
-FUZZER="aflplusplus"
-TARGET="${TARGET:-libpng}"
-CANARY_MODE="${CANARY_MODE:-1}"
+    # Magma Settings
+    FUZZER="aflplusplus"
+    TARGET="${TARGET:-libpng}"
+    CANARY_MODE="${CANARY_MODE:-1}"
 
-WORKDIR="${WORKDIR:-./workdir}"
-WORKDIR="$(realpath "$WORKDIR")"
+    WORKDIR="${WORKDIR:-./workdir}"
+    WORKDIR="$(realpath "$WORKDIR")"
 
-ARDIR="$WORKDIR/ar"
-CACHEDIR="$WORKDIR/cache"
-LOGDIR="$WORKDIR/log"
-POCDIR="$WORKDIR/poc"
+    ARDIR="$WORKDIR/ar"
+    CACHEDIR="$WORKDIR/cache"
+    LOGDIR="$WORKDIR/log"
+    POCDIR="$WORKDIR/poc"
 
-# Docker Settings
-DOCKERFILE="${DOCKERFILE:-${PIRATE}/DOCKERFILE_PIRATE}"
-IMG_NAME="magma-arm32/${FUZZER}/${TARGET}"
+    # Docker Settings
+    DOCKERFILE="${DOCKERFILE:-${PIRATE}/DOCKERFILE_PIRATE}"
+    IMG_NAME="magma-arm32/${FUZZER}/${TARGET}"
 
-# Cross-compile
-TARGET_ARCH="arm-linux-gnueabihf"
+    # Cross-compile
+    TARGET_ARCH="arm-linux-gnueabihf"
 
 
-BUILDLOG="${LOGDIR}/${IMG_NAME//\//_}_build.log"
+    BUILDLOG="${LOGDIR}/${IMG_NAME//\//_}_build.log"
 
-log_info "Initial variables set up." "${BUILDLOG}"
+    log_info "Initial variables set up." "${BUILDLOG}"
+    return 0
+}
 
 ################################################################################
 # Directory setup
@@ -60,8 +63,14 @@ docker_build() {
     local canary_args=""
     case "${CANARY_MODE}" in
         1) canary_args="--build-arg canaries=1" ;;
-        2) canary_args="" ;;
-        3) canary_args="--build-arg fixes=1" ;;
+        2) canary_args=""                       ;;
+        3) canary_args="--build-arg fixes=1"    ;;
+        *)
+            log_error "Invalid canary value ${CANARY_MODE}." "$BUILDLOG"
+            log_error "Valid inputs are 1 (Canaries), 2 (None), 3 (Fixes)" \
+                "$BUILDLOG"
+            exit 1
+            ;;
     esac
 
     ############################################################################
@@ -76,7 +85,7 @@ docker_build() {
     ############################################################################
 
     # Build Docker image
-    if ! docker build -t "${IMG_NAME}" \
+    if ! docker build -t "$IMG_NAME" \
         --build-arg fuzzer="$FUZZER" \
         --build-arg target="$TARGET" \
         --build-arg target_arch="$TARGET_ARCH" \
@@ -84,9 +93,12 @@ docker_build() {
         --build-arg group_id="$(id -g)" \
         $CANARY_ARGS \
         -f "$DOCKERFILE" "$MAGMA_R" \
-        > "${BUILDLOG}" 2>&1
+        > >(while IFS= read -r line; do
+            log_docker "$line" "$BUILDLOG"
+        done) 2>&1
+
     then
-        log_error "Docker build filed for ${IMG_NAME}" "${BUILDLOG}"
+        log_error "Docker build failed for ${IMG_NAME}" "${BUILDLOG}"
         log_error "Check ${BUILDLOG}." "${BUILDLOG}"
         exit 1
 
@@ -118,32 +130,32 @@ cleanup() {
 # Summary
 ################################################################################
 print_summary() {
-    red="$(tput setaf 1)"
-    green="$(tput setaf 2)"
-    yellow="$(tput setaf 3)"
-    blue="$(tput setaf 4)"
-    bold='\033[1m'
-    bold="$(tput bold)"
-    grey="$(tput setaf 245)"
-    reset="$(tput sgr0)"
+    local red=$'\e[0;31m'
+    local green=$'\033[0;32m'
+    local yellow=$'\033[0;33m'
+    local blue=$'\033[0;34m'
+    local grey=$'\033[38;5;245m'
+    local bold=$'\033[1m'
+    local off=$'\033[0m'
 
-
-    cat << EOF
- ${blue}================================================================================
+    cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$BUILDLOG")
+ ${blue}${bold}
+ ================================================================================
                                      SUMMARY
- ================================================================================${reset}
- ${bold}Magmadir:${reset}        $MAGMA_R
- ${bold}Workdir:${reset}         $WORKDIR
- ${bold}Target Triplet:${reset}  ${yellow}$TARGET_ARCH${reset}
- ${bold}Host Triplet:${reset}    $(gcc -dumpmachine)
- ${bold}Timeout:${reset}         $TIMEOUT
- ${bold}Repeat:${reset}          $REPEAT
- ${bold}Canary Mode:${reset}     $CANARY_MODE
- ${bold}Fuzzer:${reset}          ${FUZZER}
- ${bold}Dockerfile:${reset}      ${grey}\$MAGMADIR/${reset}${DOCKERFILE#*$MAGMA_R/}
- ${bold}Docker Image:${reset}    ${IMG_NAME}
+ ================================================================================${off}
+ ${bold}Magma Root:${off}      $MAGMA_R
+ ${bold}Workdir:${off}         $WORKDIR
+ ${bold}Dockerfile:${off}      ${grey}\$MAGMAROOT/${off}${DOCKERFILE#*"${MAGMA_R}"/}
+ ${bold}Docker Image:${off}    ${IMG_NAME}
+ ${bold}Timeout:${off}         $TIMEOUT
+ ${bold}Repeat:${off}          $REPEAT
+ ${bold}Canary Mode:${off}     $CANARY_MODE
+ ${bold}Fuzzer:${off}          ${FUZZER}
 
- ${bold}Logfile:${reset}         ${grey}\$WORKDIR/${reset}${BUILDLOG#*$WORKDIR/}
+ ${bold}Target Triplet:${off}  ${yellow}$TARGET_ARCH${off}
+ ${bold}Host Triplet:${off}    $(gcc -dumpmachine)
+
+ ${bold}Logfile:${off}         ${grey}\$WORKDIR/${off}${BUILDLOG#*"${WORKDIR}"/}
 EOF
 }
 
@@ -152,6 +164,10 @@ EOF
 #  Main
 ################################################################################
 main() {
+    #Set up variables
+    setup_variables
+
+
     # Check Magma directory
     if [ ! -d "${MAGMA_R}" ]; then
         log_error "Magma direcotry not found or invalid." "${BUILDLOG}"

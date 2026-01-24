@@ -1,34 +1,51 @@
 ################################################################################
 # Utility functions
 ################################################################################
-if [ -t 1 ] || [ -n "$FORCE_COLOR" ]; then
-    # Colors enabled
-    C_GREEN="\033[1;32m"
-    C_YELLOW="\033[1;33m"
-    C_RED="\033[1;31m"
-    C_RESET="\033[0m"
-else
-    # Colors disabled (empty strings)
-    C_GREEN=""
-    C_YELLOW=""
-    C_RED=""
-    C_RESET=""
-fi
-
+# Colors enabled
+C_GREEN="\033[0;32m"
+C_YELLOW="\033[0;33m"
+C_BLUE="\033[0;34m"
+C_RED="\033[0;31m"
+C_RESET="\033[0m"
 
 log_info() {
+    local msg="$1"
     local logfile="${2:-/dev/null}"
-    echo -e "${C_GREEN}[$(date '+%H:%M:%S')]${C_RESET} $1" | tee -a "$logfile"
+
+    # Logfile
+    echo "[$(date '+%H:%M:%S')] [INFO]  $msg" >> $logfile
+    # Terminal
+    echo -e "${C_GREEN}[$(date '+%H:%M:%S')]${C_RESET} $msg"
 }
 
 log_warn() {
+    local msg="$1"
     local logfile="${2:-/dev/null}"
-    echo -e "${C_YELLOW}[$(date '+%H:%M:%S')]${C_RESET} $1" | tee -a "$logfile"
+
+    # Logfile
+    echo "[$(date '+%H:%M:%S')] [WARN]  $msg" >> $logfile
+    # Terminal
+    echo -e "${C_YELLOW}[$(date '+%H:%M:%S')]${C_RESET} $msg"
 }
 
 log_error() {
+    local msg="$1"
     local logfile="${2:-/dev/null}"
-    echo -e "${C_RED}[$(date '+%H:%M:%S')]${C_RESET} $1" | tee -a "$logfile"
+
+    # Logfile
+    echo "[$(date '+%H:%M:%S')] [ERROR] $msg" >> $logfile
+    # Terminal
+    echo -e "${C_RED}[$(date '+%H:%M:%S')]${C_RESET} $msg"
+}
+
+log_docker() {
+    local msg="$1"
+    local logfile="${2:-/dev/null}"
+
+    # Logfile
+    echo "          [DOCKER]  > $msg" >> "$logfile"
+    # Terminal
+    echo -e "${C_BLUE}  [DOCKER]  >${C_RESET} $msg"
 }
 
 log_trace() {
