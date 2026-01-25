@@ -1,0 +1,167 @@
+# Usage (example):
+#   docker build -t magma-cross/aflplusplus/libpng \
+#       --build-arg fuzzer=aflplusplus \
+#       --build-arg target=libpng \
+#       --build-arg target_arch=arm-linux-gnueabihf \
+#       --build-arg user_id="$(id -u)" \
+#       --build-arg group_id="$(id -g)" \
+#       --build-arg canaries=1 \
+#       -f DOCKERFILE_PIRATE .
+
+FROM ubuntu:18.04
+
+################################################################################
+# Environment Setup
+################################################################################
+## Magma directory hierarchy
+# magma_root is relative to the docker-build's working directory
+# The Docker image must be built in the root of the magma directory
+# So we must provide the context usen $MAGMA_R
+ENV HOST_CONTEXT_DIR=./
+
+ENV MAGMA_R=/magma
+
+ARG fuzzer=aflplusplus
+ARG target=libpng
+ARG target_arch=arm-linux-gnueabihf
+ARG user_id=1000
+ARG group_id=1000
+ARG isan
+ARG harden
+ARG canaries
+ARG fixes
+
+ENV FUZZER_NAME=${fuzzer}
+ENV FUZZER=${MAGMA_R}/fuzzers/${FUZZER_NAME}
+ENV TARGET_NAME=${target}
+ENV TARGET=${MAGMA_R}/targets/${TARGET_NAME}
+ENV TARGET_ARCH=${target_arch}
+ENV USERID=${user_id}
+ENV GROUPID=${group_id}
+
+
+ENV MAGMA=${MAGMA_R}/magma
+ENV OUT=/magma_out
+ENV SHARED=/magma_shared
+ENV DEPS=/magma_deps
+ENV QEMU_SYSROOT=/magma_sysroot
+
+
+
+# Compiler Variables x86
+ENV CC=/usr/bin/gcc
+ENV CXX=/usr/bin/g++
+ENV LD=/usr/bin/ld
+ENV AR=/usr/bin/ar
+ENV AS=/usr/bin/as
+ENV NM=/usr/bin/nm
+ENV RANLIB=/usr/bin/ranlib
+
+# Compiler variables cross
+ENV TARGET_CC=/usr/bin/${target_arch}-gcc
+ENV TARGET_CXX=/usr/bin/${target_arch}-g++
+ENV TARGET_AR=/usr/bin/${target_arch}-ar
+ENV TARGET_LD=/usr/bin/${target_arch}-ld
+ENV TARGET_NM=/usr/bin/${target_arch}-nm
+ENV TARGET_RANLIB=/usr/bin/${target_arch}-ranlib
+
+
+
+
+# IMPORTANT:
+# AFL++ Settings
+#########################################################
+# Needs to be set for shared libs (see doc)
+ENV AFL_INST_LIBS=1
+
+# Don't hook main(), This is done by libAFLQemuDriver.a
+ENV AFL_QEMU_DRIVER_NO_HOOK=1
+#########################################################
+
+
+################################################################################
+# Initial OS and environment setup
+################################################################################
+# Use bash. Ubuntu defaults to dash!
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y sudo
+
+# Install cross-compilation toolchain and QEMU
+# Note: Using DEBIAN_FRONTEND only for this RUN to avoid tzdata prompts
+# RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+#     gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+#     gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+#     qemu-user qemu-user-static
+
+# Install dependencies for .build_qemu_support.sh (AFL++ QEMU mode)
+# RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+# 	ninja-build pkg-config libglib2.0-dev
+
+# Debug dependencies
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    file vim
+
+
+RUN mkdir -p /home && \
+	groupadd -g ${GROUPID} magma && \
+	useradd -l -u ${USERID} -K UMASK=0000 -d /home -g magma magma && \
+	chown magma:magma /home
+RUN	echo "magma:magma" | chpasswd && usermod -a -G sudo magma
+
+RUN mkdir -p ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT} && \
+    chown magma:magma ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT} && \
+    chmod 755 ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT}
+
+
+################################################################################
+# Magma Instrumentation
+################################################################################
+USER root:root
+RUN mkdir -p ${MAGMA} && chown magma:magma ${MAGMA}
+COPY --chown=magma:magma ${HOST_CONTEXT_DIR}/magma ${MAGMA}
+RUN ${MAGMA}/preinstall.sh
+USER magma:magma
+RUN ${MAGMA}/prebuild.sh
+
+################################################################################
+# Fuzzer
+################################################################################
+USER root:root
+RUN mkdir -p ${FUZZER} && chown magma:magma ${FUZZER}
+COPY --chown=magma:magma ${HOST_CONTEXT_DIR}/fuzzers/${FUZZER_NAME} ${FUZZER}
+RUN ${FUZZER}/preinstall.sh
+USER magma:magma
+RUN ${FUZZER}/fetch.sh
+
+
+#### [TODO] ############
+# RUN ${FUZZER}/build.sh
+
+
+
+################################################################################
+# Target
+################################################################################
+# Compilation flags for target!
+ENV GCC_FLAGS="-g -O0"
+ENV CFLAGS="${GCC_FLAGS}"
+ENV CXXFLAGS="${GCC_FLAGS}"
+ENV LIBS="-lrt"
+ENV LDFLAGS="-g"
+
+ENV MAGMA_BUILD_FLAGS="-include ${MAGMA}/src/canary.h \
+    ${canaries:+-DMAGMA_ENABLE_CANARIES} \
+    ${fixes:+-DMAGMA_ENABLE_FIXES} \
+    ${isan:+-DMAGMA_FATAL_CANARIES} \
+    ${harden:+-DMAGMA_HARDEN_CANARIES}"
+
+ENV CFLAGS="${CFLAGS} ${MAGMA_BUILD_FLAGS}"
+ENV CXXFLAGS="${CXXFLAGS} ${MAGMA_BUILD_FLAGS}"
+ENV LIBS="-l:magma.o ${LIBS}"
+ENV LDFLAGS="-L${OUT} -g"
+
+
+ENTRYPOINT "/bin/bash"
+
+

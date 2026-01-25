@@ -56,15 +56,14 @@ setup_directories() {
 # Docker build
 ################################################################################
 docker_build() {
-    local fuzzer_dir="${MAGMA_R}fuzzers/${FUZZER}"
+    local MAGMA_BUILD_ARGS=()
 
     log_info "Bulding Docker image ${IMG_NAME} ..." "${BUILDLOG}"
 
-    local canary_args=""
     case "${CANARY_MODE}" in
-        1) canary_args="--build-arg canaries=1" ;;
-        2) canary_args=""                       ;;
-        3) canary_args="--build-arg fixes=1"    ;;
+        1) MAGMA_BUILD_ARGS+=("--build-arg" "canaries=1") ;;
+        2) MAGMA_BUILD_ARGS+=("")                       ;;
+        3) MAGMA_BUILD_ARGS+=("--build-arg" "fixes=1")    ;;
         *)
             log_error "Invalid canary value ${CANARY_MODE}." "$BUILDLOG"
             log_error "Valid inputs are 1 (Canaries), 2 (None), 3 (Fixes)" \
@@ -77,10 +76,10 @@ docker_build() {
     # TODO: WHAT DO THESE TWO OPTIONS DO??
     #
     if [ -n "$ISAN" ]; then
-        canary_args="$canary_args --build-arg isan=1"
+        MAGMA_BUILD_ARGS+=("--build-arg" "isan=1")
     fi
     if [ -n "$HARDEN" ]; then
-        canary_args="$canary_args --build-arg harden=1"
+        MAGMA_BUILD_ARGS+=("--build-arg" "harden=1")
     fi
     ############################################################################
 
@@ -91,7 +90,7 @@ docker_build() {
         --build-arg target_arch="$TARGET_ARCH" \
         --build-arg user_id="$(id -u)" \
         --build-arg group_id="$(id -g)" \
-        $CANARY_ARGS \
+        $mode_flags $isan_flag $harden_flag \
         -f "$DOCKERFILE" "$MAGMA_R" \
         > >(while IFS= read -r line; do
             log_docker "$line" "$BUILDLOG"
