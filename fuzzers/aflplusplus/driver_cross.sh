@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -e
 
 ##
@@ -12,7 +12,7 @@ cd "${FUZZER}/repo/utils/aflpp_driver"
 
 mkdir -p "${OUT}/driver"
 
-${CC} -funroll-loops -g -fPIC -O3 -c \
-    aflpp_qemu_driver.c -o "${OUT}/driver/aflpp_qemu_driver.o"
+${CC} -funroll-loops -g -fPIC -O3 -c aflpp_qemu_driver.c \
+    -o "${OUT}/driver/aflpp_qemu_driver.o"
 
 ${AR} rcs "${OUT}/driver/libAFLQemuDriver.a" "${OUT}/driver/aflpp_qemu_driver.o"
