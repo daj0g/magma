@@ -65,6 +65,7 @@ ENV TARGET_RANLIB=/usr/bin/${target_arch}-ranlib
 
 
 
+##
 # IMPORTANT:
 # AFL++ Settings
 #########################################################
@@ -144,10 +145,11 @@ RUN cd ${FUZZER}/repo/qemu_mode && \
 #          (As this is primarly for arm, I don't want to bloat the Dockerfile.)
 
 
-#################
+
+################################################################################
 # [INFO]: From now on everything is cross compiled, so we can set CC, CXX, etc.
 #         to the target architecture
-################
+################################################################################
 ENV CC=${TARGET_CC}
 ENV CXX=${TARGET_CXX}
 ENV AR=${TARGET_AR}
@@ -155,32 +157,32 @@ ENV LD=${TARGET_LD}
 ENV NM=${TARGET_NM}
 ENV RANLIB=${TARGET_RANLIB}
 
-# Build AFL++ QEMU Driver
-RUN ${FUZZER}/driver_cross.sh
-
-
-
-
-################################################################################
-# Target
-################################################################################
-# Compilation flags for target!
-ENV GCC_FLAGS="-g -O0"
-ENV CFLAGS="${GCC_FLAGS}"
-ENV CXXFLAGS="${GCC_FLAGS}"
-ENV LIBS="-lrt"
-ENV LDFLAGS="-g"
-
 ENV MAGMA_BUILD_FLAGS="-include ${MAGMA}/src/canary.h \
     ${canaries:+-DMAGMA_ENABLE_CANARIES} \
     ${fixes:+-DMAGMA_ENABLE_FIXES} \
     ${isan:+-DMAGMA_FATAL_CANARIES} \
     ${harden:+-DMAGMA_HARDEN_CANARIES}"
+ENV BUILD_FLAGS="-g -O0 -fPIC"
 
-ENV CFLAGS="${CFLAGS} ${MAGMA_BUILD_FLAGS}"
-ENV CXXFLAGS="${CXXFLAGS} ${MAGMA_BUILD_FLAGS}"
-ENV LIBS="-l:magma.o ${LIBS}"
+ENV CFLAGS="${MAGMA_BUILD_FLAGS} ${BUILD_FLAGS}"
+ENV CXXFLAGS="${MAGMA_BUILD_FLAGS} ${BUILD_FLAGS}"
 ENV LDFLAGS="-L${OUT} -g"
+ENV LIBS="-l:magma.o -lrt"
+
+################################################################################
+# Build AFL++ QEMU Driver - cross-compilation
+################################################################################
+USER magma:magma
+RUN ${FUZZER}/driver_cross.sh
+
+################################################################################
+# Magma instrumentation - cross-compilation
+################################################################################
+USER magma:magma
+RUN ${MAGMA}/build_cross.sh
+ENV LIBS="${LIBS} ${OUT}/driver/libAFLQemuDriver.a"
+
+
 
 
 ENTRYPOINT "/bin/bash"
