@@ -83,6 +83,8 @@ ENV AFL_QEMU_DRIVER_NO_HOOK=1
 # Use bash. Ubuntu defaults to dash!
 SHELL ["/bin/bash", "-c"]
 
+USER root:root
+
 RUN apt-get update && apt-get install -y sudo
 
 # Install cross-compilation toolchain and QEMU
@@ -93,16 +95,33 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     qemu-user qemu-user-static
 
 
+
+# Add ARM32 repositories
+RUN dpkg --add-architecture armhf
+
+RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main restricted universe multiverse" > /etc/apt/sources.list && \
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb [arch=amd64] http://security.ubuntu.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list && \
+    echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list
+
+RUN apt-get update
+
+
+
 # Debug dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     file vim
-
 
 RUN mkdir -p /home && \
 	groupadd -g ${GROUPID} magma && \
 	useradd -l -u ${USERID} -K UMASK=0000 -d /home -g magma magma && \
 	chown magma:magma /home
-RUN	echo "magma:magma" | chpasswd && usermod -a -G sudo magma
+RUN	echo "magma:magma" | chpasswd && \
+    usermod -a -G sudo magma && \
+    echo "magma ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/magma && \
+    chmod 0440 /etc/sudoers.d/magma
 
 RUN mkdir -p ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
     chown magma:magma ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
@@ -182,7 +201,24 @@ USER magma:magma
 RUN ${MAGMA}/build_cross.sh
 ENV LIBS="${LIBS} ${OUT}/driver/libAFLQemuDriver.a"
 
+################################################################################
+# Target - cross-compilation
+# -> replaces ${FUZZER}/instrument.sh, as we don't have source code instrument.
+#
+# I.e. Targets are not built with the afl compiler (afl-clang-fast++) but with
+# a "normal" cross-compiler
+################################################################################
+USER root:root
+RUN mkdir -p ${FUZZER} && chown magma:magma ${FUZZER}
+COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/targets/${TARGET_NAME} ${TARGET}
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y zlib1g-dev:armhf
 
+RUN ${TARGET}/preinstall.sh
+
+USER magma:magma
+RUN ${TARGET}/fetch.sh && \
+    ${MAGMA}/apply_patches.sh
+RUN ${TARGET}/build_cross.sh
 
 
 ENTRYPOINT "/bin/bash"
