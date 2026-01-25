@@ -17,7 +17,7 @@ FROM ubuntu:18.04
 # magma_root is relative to the docker-build's working directory
 # The Docker image must be built in the root of the magma directory
 # So we must provide the context usen $MAGMA_R
-ENV HOST_CONTEXT_DIR=./
+ENV HOST_CONTEXT_ROOT=./
 
 ENV MAGMA_R=/magma
 
@@ -39,14 +39,11 @@ ENV TARGET_ARCH=${target_arch}
 ENV USERID=${user_id}
 ENV GROUPID=${group_id}
 
-
 ENV MAGMA=${MAGMA_R}/magma
 ENV OUT=/magma_out
 ENV SHARED=/magma_shared
-ENV DEPS=/magma_deps
+ENV DEPS_PATH=/magma_deps
 ENV QEMU_SYSROOT=/magma_sysroot
-
-
 
 # Compiler Variables x86
 ENV CC=/usr/bin/gcc
@@ -89,14 +86,11 @@ RUN apt-get update && apt-get install -y sudo
 
 # Install cross-compilation toolchain and QEMU
 # Note: Using DEBIAN_FRONTEND only for this RUN to avoid tzdata prompts
-# RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
-#     gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
-#     gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-#     qemu-user qemu-user-static
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+    gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    qemu-user qemu-user-static
 
-# Install dependencies for .build_qemu_support.sh (AFL++ QEMU mode)
-# RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
-# 	ninja-build pkg-config libglib2.0-dev
 
 # Debug dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -109,9 +103,11 @@ RUN mkdir -p /home && \
 	chown magma:magma /home
 RUN	echo "magma:magma" | chpasswd && usermod -a -G sudo magma
 
-RUN mkdir -p ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT} && \
-    chown magma:magma ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT} && \
-    chmod 755 ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT}
+RUN mkdir -p ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
+    chown magma:magma ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
+    chmod 755 ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT}
+
+RUN mkdir -p ${DEPS_PATH}/{lib,include} ${QEMU_SYSROOT}/{lib,usr/lib}
 
 
 ################################################################################
@@ -119,7 +115,7 @@ RUN mkdir -p ${SHARED} ${OUT} ${SHARED} ${DEPS} ${QEMU_SYSROOT} && \
 ################################################################################
 USER root:root
 RUN mkdir -p ${MAGMA} && chown magma:magma ${MAGMA}
-COPY --chown=magma:magma ${HOST_CONTEXT_DIR}/magma ${MAGMA}
+COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/magma ${MAGMA}
 RUN ${MAGMA}/preinstall.sh
 USER magma:magma
 RUN ${MAGMA}/prebuild.sh
@@ -129,14 +125,39 @@ RUN ${MAGMA}/prebuild.sh
 ################################################################################
 USER root:root
 RUN mkdir -p ${FUZZER} && chown magma:magma ${FUZZER}
-COPY --chown=magma:magma ${HOST_CONTEXT_DIR}/fuzzers/${FUZZER_NAME} ${FUZZER}
+COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/fuzzers/${FUZZER_NAME} ${FUZZER}
 RUN ${FUZZER}/preinstall.sh
+
 USER magma:magma
 RUN ${FUZZER}/fetch.sh
+RUN ${FUZZER}/build.sh
+
+USER root:root
+# Build AFL++ QEMU mode
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+	ninja-build pkg-config libglib2.0-dev
+
+USER magma:magma
+RUN cd ${FUZZER}/repo/qemu_mode && \
+    CPU_TARGET=${TARGET_ARCH%%-*} ./build_qemu_support.sh
+# CAUTION: Shell parameter expansion works for most architectures, but not all!
+#          (As this is primarly for arm, I don't want to bloat the Dockerfile.)
 
 
-#### [TODO] ############
-# RUN ${FUZZER}/build.sh
+#################
+# [INFO]: From now on everything is cross compiled, so we can set CC, CXX, etc.
+#         to the target architecture
+################
+ENV CC=${TARGET_CC}
+ENV CXX=${TARGET_CXX}
+ENV AR=${TARGET_AR}
+ENV LD=${TARGET_LD}
+ENV NM=${TARGET_NM}
+ENV RANLIB=${TARGET_RANLIB}
+
+# Build AFL++ QEMU Driver
+RUN ${FUZZER}/driver_cross.sh
+
 
 
 
