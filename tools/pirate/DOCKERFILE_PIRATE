@@ -62,6 +62,9 @@ ENV TARGET_LD=/usr/bin/${TARGET_ARCH}-ld
 ENV TARGET_NM=/usr/bin/${TARGET_ARCH}-nm
 ENV TARGET_RANLIB=/usr/bin/${TARGET_ARCH}-ranlib
 
+ENV QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
+ENV LD_LIBRARY_PATH=${OUT}
+
 
 
 
@@ -107,8 +110,6 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main restric
     echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list
 
 RUN apt-get update
-
-
 
 # Debug dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -231,4 +232,3 @@ RUN ${TARGET}/${TARGET_NAME}_build_cross.sh
 
 
 ENTRYPOINT "/bin/bash"
-
