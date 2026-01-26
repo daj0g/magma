@@ -123,7 +123,7 @@ RUN	echo "magma:magma" | chpasswd && \
     echo "magma ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/magma && \
     chmod 0440 /etc/sudoers.d/magma
 
-RUN mkdir -p $${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
+RUN mkdir -p ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
     chown magma:magma ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
     chmod 755 ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT}
 
