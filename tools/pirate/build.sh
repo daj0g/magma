@@ -59,6 +59,12 @@ setup_directories() {
 docker_build() {
     local MAGMA_BUILD_ARGS=()
 
+    log_info "Add .dockerignore. Only pass ${FUZZER} dir to docker context"
+    cp --backup=simple -f \
+        "${PIRATE}/.dockerignore" "${MAGMA_R}/.dockerignore" || true
+    echo "!fuzzers/${FUZZER}" >> "${MAGMA_R}/.dockerignore"
+    SWAP_DONE=1
+
     log_info "Bulding Docker image ${IMG_NAME} ..." "${BUILDLOG}"
 
     case "${CANARY_MODE}" in
@@ -96,12 +102,10 @@ docker_build() {
         > >(while IFS= read -r line; do
             log_docker "$line" "$BUILDLOG"
         done) 2>&1
-
     then
         log_error "Docker build failed for ${IMG_NAME}" "${BUILDLOG}"
         log_error "Check ${BUILDLOG}." "${BUILDLOG}"
         exit 1
-
     fi
 
     log_info "Docker image ${IMG_NAME} built successfully." "${BUILDLOG}"
@@ -119,8 +123,14 @@ cleanup() {
     jobs -p | xargs -r kill 2>/dev/null || true
 
     # Stop running docker containers
-    docker ps -q --filter "ancestor=magma-cross/*" 2>/dev/null | \
+    docker ps -q --filter "ancestor=magma-arm32/*" 2>/dev/null | \
         xargs -r docker stop 2>/dev/null || true
+
+    # Clean .dockerignore
+    if [ "$SWAP_DONE" -eq 1 ]; then
+        mv "${MAGMA_R}/.dockerignore~" "${MAGMA_R}/.dockerignore" 2>/dev/null \
+        || rm -f "${MAGMA_R}/.dockerignore"
+    fi
 
     log_info "Everything clean. Exit." "${BUILDLOG}"
 }
