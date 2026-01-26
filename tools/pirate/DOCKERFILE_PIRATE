@@ -55,12 +55,12 @@ ENV NM=/usr/bin/nm
 ENV RANLIB=/usr/bin/ranlib
 
 # Compiler variables cross
-ENV TARGET_CC=/usr/bin/${target_arch}-gcc
-ENV TARGET_CXX=/usr/bin/${target_arch}-g++
-ENV TARGET_AR=/usr/bin/${target_arch}-ar
-ENV TARGET_LD=/usr/bin/${target_arch}-ld
-ENV TARGET_NM=/usr/bin/${target_arch}-nm
-ENV TARGET_RANLIB=/usr/bin/${target_arch}-ranlib
+ENV TARGET_CC=/usr/bin/${TARGET_ARCH}-gcc
+ENV TARGET_CXX=/usr/bin/${TARGET_ARCH}-g++
+ENV TARGET_AR=/usr/bin/${TARGET_ARCH}-ar
+ENV TARGET_LD=/usr/bin/${TARGET_ARCH}-ld
+ENV TARGET_NM=/usr/bin/${TARGET_ARCH}-nm
+ENV TARGET_RANLIB=/usr/bin/${TARGET_ARCH}-ranlib
 
 
 
@@ -123,9 +123,9 @@ RUN	echo "magma:magma" | chpasswd && \
     echo "magma ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/magma && \
     chmod 0440 /etc/sudoers.d/magma
 
-RUN mkdir -p ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
-    chown magma:magma ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
-    chmod 755 ${SHARED} ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT}
+RUN mkdir -p $${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
+    chown magma:magma ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT} && \
+    chmod 755 ${OUT} ${SHARED} ${DEPS_PATH} ${QEMU_SYSROOT}
 
 RUN mkdir -p ${DEPS_PATH}/{lib,include} ${QEMU_SYSROOT}/{lib,usr/lib}
 
@@ -159,7 +159,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 USER magma:magma
 RUN cd ${FUZZER}/repo/qemu_mode && \
-    CPU_TARGET=${TARGET_ARCH%%-*} ./build_qemu_support.sh
+    CROSS=${TARGET_CC} CPU_TARGET=${TARGET_ARCH%%-*} ./build_qemu_support.sh
 # CAUTION: Shell parameter expansion works for most architectures, but not all!
 #          (As this is primarly for arm, I don't want to bloat the Dockerfile.)
 
@@ -231,5 +231,4 @@ RUN ${TARGET}/${TARGET_NAME}_build_cross.sh
 
 
 ENTRYPOINT "/bin/bash"
-
 
