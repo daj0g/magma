@@ -192,14 +192,20 @@ ENV LIBS="-l:magma.o -lrt"
 # Build AFL++ QEMU Driver - cross-compilation
 ################################################################################
 USER magma:magma
-RUN ${FUZZER}/driver_cross.sh
+COPY --chown=magma:magma \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/aflpp_driver_cross.sh \
+    ${FUZZER}
+RUN ${FUZZER}/aflpp_driver_cross.sh
+ENV LIBS="${LIBS} ${OUT}/driver/libAFLQemuDriver.a"
 
 ################################################################################
 # Magma instrumentation - cross-compilation
 ################################################################################
 USER magma:magma
-RUN ${MAGMA}/build_cross.sh
-ENV LIBS="${LIBS} ${OUT}/driver/libAFLQemuDriver.a"
+COPY --chown=magma:magma \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/magma_build_cross.sh \
+    ${MAGMA}
+RUN ${MAGMA}/magma_build_cross.sh
 
 ################################################################################
 # Target - cross-compilation
@@ -211,6 +217,9 @@ ENV LIBS="${LIBS} ${OUT}/driver/libAFLQemuDriver.a"
 USER root:root
 RUN mkdir -p ${FUZZER} && chown magma:magma ${FUZZER}
 COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/targets/${TARGET_NAME} ${TARGET}
+COPY --chown=magma:magma \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/${TARGET_NAME}_build_cross.sh \
+    ${TARGET}
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y zlib1g-dev:armhf
 
 RUN ${TARGET}/preinstall.sh
@@ -218,7 +227,7 @@ RUN ${TARGET}/preinstall.sh
 USER magma:magma
 RUN ${TARGET}/fetch.sh && \
     ${MAGMA}/apply_patches.sh
-RUN ${TARGET}/build_cross.sh
+RUN ${TARGET}/${TARGET_NAME}_build_cross.sh
 
 
 ENTRYPOINT "/bin/bash"
