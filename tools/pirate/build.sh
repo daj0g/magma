@@ -91,6 +91,7 @@ docker_build() {
     ############################################################################
 
     # Build Docker image
+    set -x
     if ! docker build -t "$IMG_NAME" \
         --build-arg fuzzer="$FUZZER" \
         --build-arg target="$TARGET" \
@@ -107,6 +108,7 @@ docker_build() {
         log_error "Check ${BUILDLOG}." "${BUILDLOG}"
         exit 1
     fi
+    set +x
 
     log_info "Docker image ${IMG_NAME} built successfully." "${BUILDLOG}"
     return 0
