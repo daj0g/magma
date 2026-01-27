@@ -65,21 +65,6 @@ ENV TARGET_RANLIB=/usr/bin/${TARGET_ARCH}-ranlib
 ENV QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
 ENV LD_LIBRARY_PATH=${OUT}
 
-
-
-
-##
-# IMPORTANT:
-# AFL++ Settings
-#########################################################
-# Needs to be set for shared libs (see doc)
-ENV AFL_INST_LIBS=1
-
-# Don't hook main(), This is done by libAFLQemuDriver.a
-ENV AFL_QEMU_DRIVER_NO_HOOK=1
-#########################################################
-
-
 ################################################################################
 # Initial OS and environment setup
 ################################################################################
