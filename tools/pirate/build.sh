@@ -65,11 +65,11 @@ docker_build() {
     echo "!fuzzers/${FUZZER}" >> "${MAGMA_R}/.dockerignore"
     SWAP_DONE=1
 
-    log_info "Bulding Docker image ${IMG_NAME} ..." "${BUILDLOG}"
+    log_info "Building Docker image ${IMG_NAME} ..." "${BUILDLOG}"
 
     case "${CANARY_MODE}" in
         1) MAGMA_BUILD_ARGS+=("--build-arg" "canaries=1") ;;
-        2) MAGMA_BUILD_ARGS+=("")                       ;;
+        2) ;; # No additional args for no canaries
         3) MAGMA_BUILD_ARGS+=("--build-arg" "fixes=1")    ;;
         *)
             log_error "Invalid canary value ${CANARY_MODE}." "$BUILDLOG"
@@ -90,17 +90,20 @@ docker_build() {
     fi
     ############################################################################
 
+    log_info "MAGMA_BUILD_ARGS: ${MAGMA_BUILD_ARGS[*]}"
+    log_info "Build context: $MAGMA_R" "$BUILDLOG"
+
     # Build Docker image
-    set -x
+    # set -x
     if ! docker build -t "$IMG_NAME" \
         --build-arg fuzzer="$FUZZER" \
         --build-arg target="$TARGET" \
         --build-arg target_arch="$TARGET_ARCH" \
         --build-arg user_id="$(id -u)" \
         --build-arg group_id="$(id -g)" \
-        $mode_flags $isan_flag $harden_flag \
+        "${MAGMA_BUILD_ARGS[@]}" \
         -f "$DOCKERFILE" "$MAGMA_R" \
-        > >(while IFS= read -r line; do
+        > >(set +x; while IFS= read -r line; do
             log_docker "$line" "$BUILDLOG"
         done) 2>&1
     then
@@ -108,7 +111,7 @@ docker_build() {
         log_error "Check ${BUILDLOG}." "${BUILDLOG}"
         exit 1
     fi
-    set +x
+    # set +x
 
     log_info "Docker image ${IMG_NAME} built successfully." "${BUILDLOG}"
     return 0
@@ -147,7 +150,7 @@ print_summary() {
     local yellow=$'\033[0;33m'
     local blue=$'\033[0;34m'
     local grey=$'\033[38;5;245m'
-    local bold=$'\033[1m'
+$    local bold=$'\033[1m'
     local off=$'\033[0m'
 
     cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$BUILDLOG")
@@ -158,10 +161,12 @@ print_summary() {
  ${bold}Magma Root:${off}      $MAGMA_R
  ${bold}Workdir:${off}         $WORKDIR
  ${bold}Dockerfile:${off}      ${grey}\$MAGMAROOT/${off}${DOCKERFILE#*"${MAGMA_R}"/}
- ${bold}Docker Image:${off}    ${IMG_NAME}
+ ${bold}Docker Image:${off}    $IMG_NAME
+ ${bold}Build context:${off}   $MAGMA_R
  ${bold}Timeout:${off}         $TIMEOUT
  ${bold}Repeat:${off}          $REPEAT
  ${bold}Canary Mode:${off}     $CANARY_MODE
+ ${bold}MAGMA_BUILDARGS:${off} ${MAGMA_BUILD_ARGS[*]}
  ${bold}Fuzzer:${off}          ${FUZZER}
 
  ${bold}Target Triplet:${off}  ${yellow}$TARGET_ARCH${off}
