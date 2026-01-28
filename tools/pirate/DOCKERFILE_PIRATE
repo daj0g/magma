@@ -11,8 +11,10 @@
 FROM ubuntu:18.04
 
 ################################################################################
-# Environment Setup
+# I. Environment Setup
 ################################################################################
+ARG DEBIAN_FRONTEND=noninteractive
+
 ## Magma directory hierarchy
 # magma_root is relative to the docker-build's working directory
 # The Docker image must be built in the root of the magma directory
@@ -66,7 +68,7 @@ ENV QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
 ENV LD_LIBRARY_PATH=${OUT}
 
 ################################################################################
-# Initial OS and environment setup
+# II. Initial OS and environment setup
 ################################################################################
 # Use bash. Ubuntu defaults to dash!
 SHELL ["/bin/bash", "-c"]
@@ -77,7 +79,7 @@ RUN apt-get update && apt-get install -y sudo
 
 # Install cross-compilation toolchain and QEMU
 # Note: Using DEBIAN_FRONTEND only for this RUN to avoid tzdata prompts
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+RUN apt-get install -y \
     gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
     gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
     qemu-user qemu-user-static
@@ -97,8 +99,8 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main restric
 RUN apt-get update
 
 # Debug dependencies
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    file vim
+RUN apt-get install -y \
+    file vim neovim
 
 RUN mkdir -p /home && \
 	groupadd -g ${GROUPID} magma && \
@@ -117,31 +119,40 @@ RUN mkdir -p ${DEPS_PATH}/{lib,include} ${QEMU_SYSROOT}/{lib,usr/lib}
 
 
 ################################################################################
-# Magma Instrumentation
+# III. Magma Monitor
 ################################################################################
 USER root:root
 RUN mkdir -p ${MAGMA} && chown magma:magma ${MAGMA}
 COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/magma ${MAGMA}
+# Installs Magma dependencies
 RUN ${MAGMA}/preinstall.sh
 USER magma:magma
+# Compiles the  Magma monitor
 RUN ${MAGMA}/prebuild.sh
 
 ################################################################################
-# Fuzzer
+# IV. Fuzzer
 ################################################################################
 USER root:root
 RUN mkdir -p ${FUZZER} && chown magma:magma ${FUZZER}
 COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/fuzzers/${FUZZER_NAME} ${FUZZER}
+# Install fuzzer dependencies
 RUN ${FUZZER}/preinstall.sh
 
 USER magma:magma
+# Retrieves fuzzer source code.
 RUN ${FUZZER}/fetch.sh
+# Compiles the fuzzer binaries
 RUN ${FUZZER}/build.sh
 
-USER root:root
+#######################################
 # Build AFL++ QEMU mode
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
-	ninja-build pkg-config libglib2.0-dev
+#######################################
+# Note: This Section is specific to AFL++
+USER root:root
+RUN apt-get install -y \
+	ninja-build pkg-config libglib2.0-dev build-essential python3-dev \
+	automake git flex bison libpixman-1-dev python3-setuptools
 
 USER magma:magma
 RUN cd ${FUZZER}/repo/qemu_mode && \
@@ -150,18 +161,34 @@ RUN cd ${FUZZER}/repo/qemu_mode && \
 #          (As this is primarly for arm, I don't want to bloat the Dockerfile.)
 
 
-
-################################################################################
+#===============================================================================
 # [INFO]: From now on everything is cross compiled, so we can set CC, CXX, etc.
 #         to the target architecture
-################################################################################
+#===============================================================================
 ENV CC=${TARGET_CC}
 ENV CXX=${TARGET_CXX}
 ENV AR=${TARGET_AR}
 ENV LD=${TARGET_LD}
 ENV NM=${TARGET_NM}
 ENV RANLIB=${TARGET_RANLIB}
+#===============================================================================
 
+########################################
+# Build AFL++ QEMU Driver
+########################################
+# Note: This Section is specific to AFL++
+USER magma:magma
+COPY --chown=magma:magma \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/aflpp_driver_cross.sh \
+    ${FUZZER}
+# Cross compile AFL++ driver
+RUN ${FUZZER}/aflpp_driver_cross.sh
+ENV LIBS="${OUT}/driver/libAFLQemuDriver.a"
+
+################################################################################
+# V. Magma instrumentation
+################################################################################
+# Pass magma intrumentation to flags
 ENV MAGMA_BUILD_FLAGS="-include ${MAGMA}/src/canary.h \
     ${canaries:+-DMAGMA_ENABLE_CANARIES} \
     ${fixes:+-DMAGMA_ENABLE_FIXES} \
@@ -172,29 +199,19 @@ ENV BUILD_FLAGS="-g -O0 -fPIC"
 ENV CFLAGS="${MAGMA_BUILD_FLAGS} ${BUILD_FLAGS}"
 ENV CXXFLAGS="${MAGMA_BUILD_FLAGS} ${BUILD_FLAGS}"
 ENV LDFLAGS="-L${OUT} -g"
-ENV LIBS="-l:magma.o -lrt"
+ENV LIBS="${LIBS} -l:magma.o -lrt"
 
-################################################################################
-# Build AFL++ QEMU Driver - cross-compilation
-################################################################################
-USER magma:magma
-COPY --chown=magma:magma \
-    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/aflpp_driver_cross.sh \
-    ${FUZZER}
-RUN ${FUZZER}/aflpp_driver_cross.sh
-ENV LIBS="${LIBS} ${OUT}/driver/libAFLQemuDriver.a"
-
-################################################################################
-# Magma instrumentation - cross-compilation
-################################################################################
 USER magma:magma
 COPY --chown=magma:magma \
     ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/magma_build_cross.sh \
     ${MAGMA}
+
+# Cross compile Magma runtime library $OUT/magma.o
 RUN ${MAGMA}/magma_build_cross.sh
 
 ################################################################################
-# Target - cross-compilation
+# VI. Target
+################################################################################
 # -> replaces ${FUZZER}/instrument.sh, as we don't have source code instrument.
 #
 # I.e. Targets are not built with the afl compiler (afl-clang-fast++) but with
@@ -206,14 +223,26 @@ COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/targets/${TARGET_NAME} ${TARGET}
 COPY --chown=magma:magma \
     ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/${TARGET_NAME}_build_cross.sh \
     ${TARGET}
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y zlib1g-dev:armhf
 
+# Install cross-compiled runtime dependencies (only for libpng for now)
+RUN apt-get install -y zlib1g-dev:armhf
+
+# Install target runtime and build dependencies
 RUN ${TARGET}/preinstall.sh
+# NOTE: Cross-compiled runtime dependencies are
+#       installed in the RUN line above.
 
 USER magma:magma
-RUN ${TARGET}/fetch.sh && \
-    ${MAGMA}/apply_patches.sh
+# Retrieves target source code
+RUN ${TARGET}/fetch.sh
+# Forward ports bugs
+RUN ${MAGMA}/apply_patches.sh
+
+
 RUN ${TARGET}/${TARGET_NAME}_build_cross.sh
+
+################DEBUG###########################################
+COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/tools/pirate ${MAGMA_R}/pirate
 
 
 ENTRYPOINT "/bin/bash"
