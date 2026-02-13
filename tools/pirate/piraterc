@@ -1,0 +1,20 @@
+TARGET_NAME=libpng
+WORKDIR=./output
+
+
+PROGRAM=libpng_read_fuzzer
+# PROGRAM_ARGS=
+
+BUG=PNG004  # Empty or unset: all
+
+CANARY_MODE=1           # 4: library provided
+PRECOMPILED_LIB_NAME=   # Name of precompiled library,
+OPTIMIZATION=1          # gcc -O levels, values > 3: OPTIMIZATON_LEVEL=3
+# ISAN=1
+# HARDEN=1
+
+
+# Runtime variables
+TIMEOUT=15m
+POLL=5
+WORKERS=2

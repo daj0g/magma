@@ -9,15 +9,17 @@ set -e
 
 # FIX: Guard canary.h against Assembly files BEFORE we build anything.
 # This prevents the "bad instruction" error later in libpng
-sed -i '1i#ifndef __ASSEMBLER__' ${MAGMA}/src/canary.h
-echo "#endif" >> ${MAGMA}/src/canary.h
+if ! grep -q '__ASSEMBLER__' "${MAGMA}/src/canary.h"; then
+  sed -i '1i#ifndef __ASSEMBLER__' "${MAGMA}/src/canary.h"
+  echo "#endif" >> "${MAGMA}/src/canary.h"
+fi
 
-MAGMA_STORAGE="${SHARED}/canaries.raw" && \
+MAGMA_STORAGE="${SHARED}/canaries.raw"
 
-${CC} ${CFLAGS} -D"MAGMA_STORAGE=\"${MAGMA_STORAGE}\"" -c "${MAGMA}/src/canary.c" \
+${CC} ${CFLAGS} -O0 -D"MAGMA_STORAGE=\"${MAGMA_STORAGE}\"" -c "${MAGMA}/src/canary.c" \
     -fPIC -I "${MAGMA}/src/" -o "${OUT}/canary.o"
 
-${CC} ${CFLAGS} -D"MAGMA_STORAGE=\"${MAGMA_STORAGE}\"" -c "${MAGMA}/src/storage.c" \
+${CC} ${CFLAGS} -O0 -D"MAGMA_STORAGE=\"${MAGMA_STORAGE}\"" -c "${MAGMA}/src/storage.c" \
     -fPIC -I "${MAGMA}/src/" -o "${OUT}/storage.o"
 
 ${LD} -r "${OUT}/canary.o" "${OUT}/storage.o" -o "${OUT}/magma.o"

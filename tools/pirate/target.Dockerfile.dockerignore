@@ -1,0 +1,5 @@
+/tools/*
+!/tools/pirate/
+
+/fuzzers/*
+!/fuzzers/aflplusplus

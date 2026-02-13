@@ -1,0 +1,8 @@
+/tools/*
+!/tools/pirate/
+/tools/pirate/*
+!/tools/pirate/scripts/
+!/tools/pirate/precompiled/
+
+/fuzzers/*
+!/fuzzers/aflplusplus
