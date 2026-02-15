@@ -37,16 +37,24 @@ set -a
 source "$RCFILE"
 set +a
 
-################################################################################
-# Derive image name (shared logic in util.sh)
-################################################################################
+
+# Derive image name (same as in build.sh)
 IMG_NAME_TARGET="$(derive_image_name)"
 
 ################################################################################
 # Build (unless --no-build)
 ################################################################################
 if [ "$NO_BUILD" -eq 0 ]; then
-    "${PIRATE}/build.sh" "$RCFILE"
+    if docker image inspect "$IMG_NAME_TARGET" &>/dev/null; then
+        log_warn "Image already exists: ${IMG_NAME_TARGET}"
+        read -rp "Rebuild and overwrite? [Y/n] " answer
+        case "${answer,,}" in
+            n|no) log_info "Skipping build, using existing image." ;;
+            *) "${PIRATE}/build.sh" "$RCFILE" ;;
+        esac
+    else
+        "${PIRATE}/build.sh" "$RCFILE"
+    fi
 fi
 
 # Verify image exists
@@ -57,7 +65,7 @@ if ! docker image inspect "$IMG_NAME_TARGET" &>/dev/null; then
 fi
 
 ################################################################################
-# Shared volume (mount WORKDIR into the container as /magma_shared)
+# Shared directories
 ################################################################################
 WORKDIR="$(realpath "${WORKDIR:-./workdir}")"
 mkdir -p "$WORKDIR"
@@ -65,8 +73,16 @@ mkdir -p "$WORKDIR"
 ################################################################################
 # Launch container
 ################################################################################
+CONTAINER_BASE="${IMG_NAME_TARGET//\//_}_${PROGRAM_NAME}"
+CONTAINER_N=1
+while docker container inspect "${CONTAINER_BASE}_${CONTAINER_N}" &>/dev/null; do
+    ((CONTAINER_N++))
+done
+CONTAINER_NAME="${CONTAINER_BASE}_${CONTAINER_N}"
+
 DOCKER_ARGS=(
     --rm
+    --name "$CONTAINER_NAME"
     -v "${WORKDIR}:/magma_shared"
     # Runtime variables (override piraterc defaults baked into the image)
     -e "PROGRAM_NAME=${PROGRAM_NAME:-}"
