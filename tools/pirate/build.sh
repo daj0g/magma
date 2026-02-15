@@ -71,27 +71,15 @@ setup_variables() {
         fi
     fi
 
-    (( OPTIMIZATION > 3 )) && OPTIMIZATION=3        # cap at 3
-    (( CANARY_MODE > 4 )) && CANARY_MODE=1          # set 1 by default
+    (( OPTIMIZATION > 3 )) && OPTIMIZATION=3 || true      # cap at 3
+    (( CANARY_MODE > 4 )) && CANARY_MODE=1 || true          # set 1 by default
 
 
     # Docker Settings
     DOCKERFILE_BASE="${PIRATE}/base.Dockerfile"
     DOCKERFILE_TARGET="${PIRATE}/target.Dockerfile"
     IMG_NAME_BASE="pirate/base"
-
-    case "$CANARY_MODE" in
-        1) LABEL="vulnerable_c1" ;;
-        2) LABEL="c2" ;;
-        3) LABEL="fixed_c3" ;;
-        4) LABEL="patched_c4" ;;
-        *) LABEL="canary_unknown" ;; # Should theoretically not be reachable
-    esac
-
-    name="pirate/${TARGET_NAME}/${BUG:-all}"
-    name="${name}/${LABEL}${ISAN:+_isan}${HARDEN:+_harden}"
-    name="${name}/o${OPTIMIZATION}"
-    IMG_NAME_TARGET="${name,,}"
+    IMG_NAME_TARGET="$(derive_image_name)"
 
     # Logging
     BUILDLOG="${LOGDIR}/${IMG_NAME_TARGET//\//_}_build.log"
@@ -240,7 +228,6 @@ print_summary() {
   ${bold}Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}
   ${bold}Fuzzer:${off}            ${FUZZER_NAME}
   ${bold}Target:${off}            ${TARGET_NAME}
-  ${bold}Program/Harness:${off}   ${PROGRAM_NAME}
   ${bold}Canary Mode:${off}       ${CANARY_MODE/4/4 ${red}  ! Check precompiled lib !${off}}
   ${bold}Precompiled Lib:${off}   ${red}${PRECOMPILED_LIB_NAME:-${grey}N/A}${off}
   ${bold}Bugs enabled:${off}      ${BUG:-all}
@@ -288,11 +275,6 @@ main() {
         log_error "Docker executable not found. Please install docker." "${BUILDLOG}"
         exit 1
     fi
-
-    # if [ ! -f "${DOCKERFILE}" ]; then
-    #     log_error "Dockerfile ${DOCKERFILE} not found." "${BUILDLOG}"
-    #     exit 1
-    # fi
 
     setup_directories
 

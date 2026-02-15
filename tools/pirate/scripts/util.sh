@@ -69,6 +69,25 @@ log_trace() {
     done
 }
 
+derive_image_name() {
+    local target="${TARGET_NAME:-libpng}"
+    local mode="${CANARY_MODE:-1}"
+    local opt="${OPTIMIZATION:-1}"
+    local label
+    case "$mode" in
+        1) label="vulnerable_c1" ;;
+        2) label="c2" ;;
+        3) label="fixed_c3" ;;
+        4) label="patched_c4" ;;
+        *) label="canary_unknown" ;;
+    esac
+    local name="pirate/${target}/${BUG:-all}"
+    name="${name}/${label}${ISAN:+_isan}${HARDEN:+_harden}"
+    name="${name}/o${opt}"
+    echo "${name,,}"
+}
+
+
 ################################################################################
 # Execution Guard / Test Block
 ################################################################################
