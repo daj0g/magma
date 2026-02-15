@@ -22,9 +22,10 @@ FROM ${base_image}
 # I. Environment setup
 ################################################################################
 ARG target=libpng
-ARG img_name
+ARG target_image
 ARG bug
 ARG optimization=1
+ARG canary_mode=1
 ARG precompiled_lib
 ARG canaries
 ARG fixes
@@ -33,9 +34,10 @@ ARG harden
 
 ENV TARGET_NAME="${target}"
 ENV TARGET="${MAGMA_R}/targets/${TARGET_NAME}"
-ENV IMG_NAME_TARGET="${img_name}"
+ENV IMG_NAME_TARGET="${target_image}"
 ENV BUG="${bug:-}"
-ENV OFLAG="-O${optimization}"
+ENV CANARY_MODE="${canary_mode}"
+ENV OPTIMIZATION="${optimization}"
 ENV PRECOMPILED_LIB_NAME="${precompiled_lib}"
 ENV PRECOMPILED_LIB=${precompiled_lib:+${PIRATE}/precompiled/${TARGET_NAME}/${BUG}/${precompiled_lib}}
 
@@ -46,6 +48,7 @@ RUN mkdir -p ${TARGET} && \
     chmod 755 ${TARGET}
 
 # Copy target files
+COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/tools/pirate/ ${PIRATE}
 COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/targets/${TARGET_NAME} ${TARGET}
 
 ################################################################################
@@ -80,8 +83,8 @@ RUN ${TARGET}/fetch.sh
 RUN ${PIRATE}/scripts/apply_patches.sh
 
 # last -O flag takes precedence
-ENV CFLAGS="${CFLAGS} ${OFLAG}"
-ENV CXXFLAGS="${CXXFLAGS} ${OFLAG}"
+ENV CFLAGS="${CFLAGS} -O${OPTIMIZATION}"
+ENV CXXFLAGS="${CXXFLAGS} -O${OPTIMIZATION}"
 RUN ${PIRATE}/scripts/${TARGET_NAME}_build_cross.sh
 
 ENTRYPOINT ["/bin/bash"]

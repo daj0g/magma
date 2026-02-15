@@ -46,7 +46,11 @@ else
     make -j$(nproc) pnglibconf.h
 
     cp -a "${PRECOMPILED_LIB}" "${OUT}/"
+
+    # static linker (compile time) - "-lpng16"
     ln -sf "$(basename "${PRECOMPILED_LIB}")" "${OUT}/libpng16.so"
+    # dynamic linker / loader (runtime)
+    ln -sf "$(basename "${PRECOMPILED_LIB}")" "${OUT}/libpng16.so.16"
 fi
 
 
@@ -58,6 +62,16 @@ ${CXX} ${CXXFLAGS} -O2 -std=c++11 \
     ${LDFLAGS} \
     ${LIBS} \
     -lpng16 -lz -lm
+
+# build libpng_read_fuzzer_pirate
+${CXX} ${CXXFLAGS} -O2 -std=c++11 \
+      -I. \
+      ${PIRATE}/scripts/libpng_read_fuzzer_pirate.cc \
+      -o "${OUT}/libpng_read_fuzzer_pirate" \
+      ${LDFLAGS} \
+      ${LIBS} \
+      -lpng16 -lz -lm
+
 
 
 echo "[*] Verifying harness..."

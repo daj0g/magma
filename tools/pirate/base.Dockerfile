@@ -76,6 +76,10 @@ USER root:root
 
 RUN apt-get update && apt-get install -y sudo
 
+# Trouble shooting tools
+RUN apt-get install -y \
+    neovim file gawk binutils-${TARGET_ARCH}
+
 # Install cross-compilation toolchain and QEMU
 RUN apt-get install -y \
     gcc-${TARGET_ARCH} g++-${TARGET_ARCH} \
@@ -112,7 +116,6 @@ RUN mkdir -p ${OUT} ${SHARED} ${MAGMA} ${FUZZER} && \
 # Copy magma and fuzzer files
 COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/magma ${MAGMA}
 COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/fuzzers/${FUZZER_NAME} ${FUZZER}
-COPY --chown=magma:magma ${HOST_CONTEXT_ROOT}/tools/pirate ${PIRATE}
 
 ################################################################################
 # III. Magma Monitor
@@ -151,15 +154,12 @@ ENV LD=${TARGET_LD}
 ENV NM=${TARGET_NM}
 ENV RANLIB=${TARGET_RANLIB}
 
+COPY --chown=magma:magma \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/aflpp_driver_cross.sh \
+    ${PIRATE}/scripts/
+
 # Build AFL++ QEMU Driver
 RUN ${PIRATE}/scripts/aflpp_driver_cross.sh
 ENV LIBS="${OUT}/driver/libAFLQemuDriver.a"
-
-# Trouble shooting tools
-USER root:root
-RUN apt-get install -y \
-    neovim file gawk binutils-${TARGET_ARCH}
-
-USER magma:magma
 
 ENTRYPOINT ["/bin/bash"]

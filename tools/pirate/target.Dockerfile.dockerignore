@@ -1,5 +1,5 @@
+/tmp/
 /tools/*
-!/tools/pirate/
-
-/fuzzers/*
-!/fuzzers/aflplusplus
+!/tools/pirate
+/fuzzers/
+/magma/

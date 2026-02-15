@@ -1,7 +1,20 @@
 #!/bin/bash
 set -e
 
+if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
+    if [ -z "$1" ]; then
+        set -- "./piraterc"
+    fi
+
+    # load the configuration file (piraterc)
+    set -a
+    source "$1"
+    set +a
+fi
+
 source "$(dirname "${BASH_SOURCE[0]}")/scripts/util.sh"
+
+
 ################################################################################
 # Variable Definition
 ################################################################################
@@ -16,6 +29,9 @@ setup_variables() {
     FUZZER_NAME="aflplusplus"
     TARGET_NAME="${TARGET_NAME:-libpng}"
     CANARY_MODE="${CANARY_MODE:-1}"
+    OPTIMIZATION="${OPTIMIZATION:-1}"
+    ISAN="${ISAN:-}"
+    HARDEN="${HARDEN:-}"
     TARGET_ARCH="arm-linux-gnueabihf"
     TARGET_ARCH_DEB="armhf"
     BUG=${BUG:-}
@@ -24,8 +40,6 @@ setup_variables() {
 
     WORKDIR="${WORKDIR:-./workdir}"
     WORKDIR="$(realpath "$WORKDIR")"
-    ARDIR="$WORKDIR/ar"
-    CACHEDIR="$WORKDIR/cache"
     LOGDIR="$WORKDIR/log"
     POCDIR="$WORKDIR/poc"
 
@@ -35,15 +49,13 @@ setup_variables() {
             log_error "No patch file for ${BUG} found."
             exit 1
         fi
-    else
-        if [ -n "${PRECOMPILED_LIB}" ]; then
-            log_error "\$PRECOMPILED_LIB_NAME set, but \$BUG not set."
-            log_info "Unset \$PRECOMPILED_LIB_NAME or specify a bug."
-            exit 1
-        fi
     fi
 
     if [ "$CANARY_MODE" -eq 4 ]; then
+        if [ -z "$BUG" ]; then
+            log_error "\$BUG variable needs to be set in CANARY_MODE=4"
+            exit 1
+        fi
         if [ ! -f "$PRECOMPILED_LIB" ]; then
             log_error "Precompiled lib missing ${PRECOMPILED_LIB:-'(empty)'}"
             exit 1
@@ -53,20 +65,33 @@ setup_variables() {
             log_error "${OPTIMIZATION:-'(empty)'} not possible"
             exit 1
         fi
-
+    else
+        if [ -n "$PRECOMPILED_LIB_NAME" ]; then
+            log_warn "Precompiled lib defined, but canary mode not 4!"
+        fi
     fi
 
-    OPTIMIZATION="${OPTIMIZATION:-1}"
     (( OPTIMIZATION > 3 )) && OPTIMIZATION=3        # cap at 3
+    (( CANARY_MODE > 4 )) && CANARY_MODE=1          # set 1 by default
 
 
     # Docker Settings
     DOCKERFILE_BASE="${PIRATE}/base.Dockerfile"
     DOCKERFILE_TARGET="${PIRATE}/target.Dockerfile"
-    # IMG_NAME_BASE="pirate-base-${TARGET_ARCH%%-*}"
     IMG_NAME_BASE="pirate/base"
-    IMG_NAME_TARGET="${IMG_NAME_TARGET:-pirate/${TARGET_NAME}/c${CANARY_MODE}_o${OPTIMIZATION}_${BUG:-all}}"
-    IMG_NAME_TARGET="${IMG_NAME_TARGET,,}"
+
+    case "$CANARY_MODE" in
+        1) LABEL="vulnerable_c1" ;;
+        2) LABEL="c2" ;;
+        3) LABEL="fixed_c3" ;;
+        4) LABEL="patched_c4" ;;
+        *) LABEL="canary_unknown" ;; # Should theoretically not be reachable
+    esac
+
+    name="pirate/${TARGET_NAME}/${BUG:-all}"
+    name="${name}/${LABEL}${ISAN:+_isan}${HARDEN:+_harden}"
+    name="${name}/o${OPTIMIZATION}"
+    IMG_NAME_TARGET="${name,,}"
 
     # Logging
     BUILDLOG="${LOGDIR}/${IMG_NAME_TARGET//\//_}_build.log"
@@ -81,8 +106,6 @@ setup_variables() {
 setup_directories() {
     log_info "Setting up directories ..."
     mkdir -p "$WORKDIR"
-    mkdir -p "$ARDIR"
-    mkdir -p "$CACHEDIR"
     mkdir -p "$LOGDIR"
     mkdir -p "$POCDIR"
 
@@ -117,19 +140,22 @@ docker_build() {
             ;;
     esac
 
-    ############################################################################
-    # TODO: WHAT DO THESE TWO OPTIONS DO??
-    #
     if [ -n "$ISAN" ]; then
         MAGMA_BUILD_ARGS+=("--build-arg" "isan=1")
     fi
     if [ -n "$HARDEN" ]; then
         MAGMA_BUILD_ARGS+=("--build-arg" "harden=1")
     fi
-    ############################################################################
 
     log_info "MAGMA_BUILD_ARGS: ${MAGMA_BUILD_ARGS[*]}"
     log_info "Build context: $MAGMA_R" "$BUILDLOG"
+
+    # Check by user
+    print_summary
+    read -rp "Check the summary above. Proceed with build? [Y/n] " answer
+    case "${answer,}" in
+        n|no) log_info "Build cancelled by user." "$BUILDLOG"; exit 0 ;;
+    esac
 
     # Build Docker base image
     # OS init, fuzzer (incl. qemu mode), Magma monitor
@@ -159,8 +185,10 @@ docker_build() {
     if ! docker build -t "$IMG_NAME_TARGET" \
         --build-arg base_image="$IMG_NAME_BASE" \
         --build-arg target="$TARGET_NAME" \
-        --build-arg img_name="$IMG_NAME_TARGET" \
+        --build-arg target_image="$IMG_NAME_TARGET" \
+        --build-arg bug="$BUG" \
         --build-arg precompiled_lib="$PRECOMPILED_LIB_NAME" \
+        --build-arg canary_mode="$CANARY_MODE" \
         --build-arg optimization="$OPTIMIZATION" \
         "${MAGMA_BUILD_ARGS[@]}" \
         -f "$DOCKERFILE_TARGET" "$MAGMA_R" \
@@ -207,22 +235,29 @@ print_summary() {
  ================================================================================
                                      SUMMARY
  ================================================================================${off}
- ${bold}Magma Root:${off}      $MAGMA_R
- ${bold}Workdir:${off}         $WORKDIR
- ${bold}Pirate dir:${off}      $PIRATE
- ${bold}Dockerfile:${off}      ${grey}\$MAGMAROOT/${off}${DOCKERFILE_TARGET#*"${MAGMA_R}"/}
- ${bold}Docker Image:${off}    ${red}$IMG_NAME_TARGET${off}
- ${bold}Build context:${off}   $MAGMA_R
- ${bold}Canary Mode:${off}     $CANARY_MODE
- ${bold}MAGMA_BUILDARGS:${off} ${MAGMA_BUILD_ARGS[*]}
- ${bold}Fuzzer:${off}          ${FUZZER_NAME}
- ${bold}Bugs enabled:${off}    ${BUG:-all}
- ${bold}Optimization:${off}    -O${OPTIMIZATION}
+  ${bold}Magma Root:${off}        $MAGMA_R
+  ${bold}Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}
+  ${bold}Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}
+  ${bold}Fuzzer:${off}            ${FUZZER_NAME}
+  ${bold}Target:${off}            ${TARGET_NAME}
+  ${bold}Program/Harness:${off}   ${PROGRAM_NAME}
+  ${bold}Canary Mode:${off}       ${CANARY_MODE/4/4 ${red}  ! Check precompiled lib !${off}}
+  ${bold}Precompiled Lib:${off}   ${red}${PRECOMPILED_LIB_NAME:-${grey}N/A}${off}
+  ${bold}Bugs enabled:${off}      ${BUG:-all}
+  ${bold}Optimization:${off}      ${OPTIMIZATION}
+  ${bold}ISAN:${off}              ${ISAN:-${grey}N/A${off}}
+  ${bold}HARDEN:${off}            ${HARDEN:-${grey}N/A${off}}
+  ${bold}Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}
 
- ${bold}Target Triplet:${off}  ${yellow}$TARGET_ARCH${off}
- ${bold}Host Triplet:${off}    $(gcc -dumpmachine)
+  ${bold}Target Triplet:${off}    ${green}$TARGET_ARCH${off}
+  ${bold}Host Triplet:${off}      $(gcc -dumpmachine)
 
- ${bold}Logfile:${off}         ${grey}\$WORKDIR/${off}${BUILDLOG#*"${WORKDIR}"/}
+  ${bold}Dockerfile:${off}        ${DOCKERFILE_TARGET/$MAGMA_R/${grey}\$MAGMA_R${off}}
+  ${bold}Docker Image:${off}      ${yellow}$IMG_NAME_TARGET${off}
+  ${bold}Build context:${off}     $MAGMA_R
+
+  ${bold}Logfile:${off}           ${BUILDLOG/$WORKDIR/${grey}\$WORKDIR${off}} ${blue}${bold}
+ ================================================================================${off}
 
 EOF
 }
@@ -260,9 +295,11 @@ main() {
     # fi
 
     setup_directories
+
     docker_build
-    log_success "Build was successful!" "$BUILDLOG"
     print_summary
+    log_success "Build was successful!" "$BUILDLOG"
+    log_info "Run the docker image ${IMG_NAME_TARGET}." "$BUILDLOG"
 }
 
 trap "exit 1" SIGINT SIGTERM

@@ -1,8 +1,15 @@
+/tmp/
+
 /tools/*
 !/tools/pirate/
 /tools/pirate/*
 !/tools/pirate/scripts/
+!/tools/pirate/input/
 !/tools/pirate/precompiled/
+!/tools/pirate/start.sh
+!/tools/pirate/run.sh
 
 /fuzzers/*
 !/fuzzers/aflplusplus
+
+/targets/

@@ -33,6 +33,7 @@ log_info "Starting campaign: ${IMG_NAME_TARGET}"
 mkdir -p "${SHARED}"
 
 docker run --rm -it \
+-e PROGRAM="${PROGRAM}" \
 -e POLL="${POLL}" \
 -e TIMEOUT="${TIMEOUT}" \
 -e WORKERS="${WORKERS}" \
