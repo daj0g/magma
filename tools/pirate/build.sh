@@ -228,6 +228,7 @@ print_summary() {
   ${bold}Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}
   ${bold}Fuzzer:${off}            ${FUZZER_NAME}
   ${bold}Target:${off}            ${TARGET_NAME}
+  ${bold}Program/Harness:${off}   ${PROGRAM_NAME}           # This should ideally be in run.sh, not build.sh
   ${bold}Canary Mode:${off}       ${CANARY_MODE/4/4 ${red}  ! Check precompiled lib !${off}}
   ${bold}Precompiled Lib:${off}   ${red}${PRECOMPILED_LIB_NAME:-${grey}N/A}${off}
   ${bold}Bugs enabled:${off}      ${BUG:-all}
