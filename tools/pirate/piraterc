@@ -1,10 +1,10 @@
 # (default: ./workdir)
-ORKDIR=./workdir
+WORKDIR=./workdir
 
 # [TARGET_NAME]: name of the target library to fuzz
 # needs to match a directory name if magma/targets
 # (default: libpng)
-TARGET_NAME=libpng
+TARGET_NAME=libtiff
 
 # [CANARY_MODE]: defines the mode of canaries at compile time (default: 1)
 # - 1: without fixes, with canaries
@@ -24,7 +24,7 @@ CANARY_MODE=1
 # PRECOMPILED_LIB_NAME=
 
 # [OPTIMIZATION]: gcc compile optimization level
-OPTIMIZATION=3
+OPTIMIZATION=1
 
 # [ISAN]: if set, build the benchmark with ISAN/fatal canaries (default: unset)
 # ISAN=1
@@ -38,16 +38,16 @@ OPTIMIZATION=3
 ####################
 # [PROGRAM_NAME]: name of harness
 # (default: first directory found in target/corpus/ directory)
-PROGRAM_NAME=libpng_read_fuzzer_pirate
+PROGRAM_NAME=tiff_read_rgba_fuzzer
 
 # [PROGRAM_ARGS]: additional arguments for the hanress
 # (default: unset)
-# PROGRAM_ARGS=
+# PROGRAM_ARGS="-M @@ tmp.out"
 
 # [CORPUS_NAME]: name of harnes of which the corpus directory is used.
 # This is useful, if the harness is not included in the original magma fiels.
 # (default: PROGRAM_NAME)
-CORPUS_NAME=libpng_read_fuzzer
+# CORPUS_NAME=libpng_read_fuzzer
 
 # [INCLUDE_POV]: if set, include previously extracted PoVs in fuzzer input dir
 # (default: unset)
