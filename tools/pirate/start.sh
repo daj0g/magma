@@ -130,10 +130,10 @@ EOF
 cleanup() {
     log_info "Cleaning up..." "$FUZZERLOG"
     "${OUT}/monitor" --dump human "$MAGMA_STORAGE" > "${MONITOR}/results.txt"
-    jobs -p | xargs -r kill 2>/dev/null || true176
+    jobs -p | xargs -r kill 2>/dev/null || true
     log_success "Everything clean. Exit." "${FUZZERLOG}"
 }
-trap cleanup
+trap cleanup EXIT
 
 ##############################################################################
 # Monitor process
