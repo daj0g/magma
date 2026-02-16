@@ -125,6 +125,8 @@ RUN ${MAGMA}/preinstall.sh
 
 USER magma:magma
 RUN ${MAGMA}/prebuild.sh
+# Copy monitor to shared folder, for inspection from host
+RUN cp ${OUT}/monitor ${SHARED}/monitor
 
 ################################################################################
 # IV. Fuzzer - AFL++
