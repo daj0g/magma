@@ -135,11 +135,11 @@ ${bold}  LD_LIBRARY_PATH:${off}      ${LD_LIBRARY_PATH}                         
 
 ${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov)           ${off}
 ${bold}  Canary Mode:${off}          ${CANARY_MODE}                             ${off}
-${bold}  ISAN:${off}                 ${ISAN:-${darkgrey}disabled}               ${off}
+${bold}  ISAN:${off}                 ${yellow}${ISAN:-${darkgrey}disabled}      ${off}
 ${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )                    ${off}
 ${bold}  AFL_MAP_SIZE:${off}         ${AFL_MAP_SIZE}                            ${off}
 ${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES}           ${off}
-${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:+${green}enabled}${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}    ${off}
+${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}    ${off}
 
 ${bold}  Timeout:${off}              ${TIMEOUT}                                 ${off}
 ${bold}  Poll:${off}                 ${POLL}                                    ${off}
@@ -161,7 +161,7 @@ EOF
 write_csv() {
     CAMPAIGN_CSV="${SHARED}/campaigns.csv"
     if [ ! -s "$CAMPAIGN_CSV" ]; then
-        echo "#;Library;Bugs;Optimisation;ISAN;Canary Mode;Precompiled;Harness/Program;Date;Time;Runtime;Workers;Campaign ID;AFL_MAP_SIZE;AFL_QEMU_INST_RANGES;AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES" \
+        echo "#;Library;Harness/Program;Bugs;Optimisation;ISAN;Canary Mode;Precompiled;Date;Time;Runtime;Workers;Campaign ID;AFL_MAP_SIZE;AFL_QEMU_INST_RANGES;AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES" \
         > "$CAMPAIGN_CSV"
     fi
     printf '%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s\n' \

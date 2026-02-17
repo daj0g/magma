@@ -221,6 +221,11 @@ print_build_summary() {
     local bold=$'\033[1m'
     local off=$'\033[0m'
 
+    local prepath=${PRECOMPILED_LIB/$PIRATE/${grey}\$PIRATE${red}}
+    prepath=${prepath/O$OPTIMIZATION/${yellow}O$OPTIMIZATION${red}}
+    prepath=${prepath/$BUG/${yellow}$BUG${red}}
+    prepath=${prepath/$TARGET_NAME/${yellow}$TARGET_NAME${red}}
+
     cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$BUILDLOG")
  ${blue}${bold}
  ==============================================================================
@@ -231,14 +236,14 @@ ${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}    
 ${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}     ${off}
 
 ${bold}  Fuzzer:${off}            ${FUZZER_NAME}                                ${off}
-${bold}  Target:${off}            ${yellow}${TARGET_NAME}                                ${off}
+${bold}  Target:${off}            ${yellow}${TARGET_NAME}                       ${off}
 ${bold}  Program/Harness:${off}   ${PROGRAM_NAME}                               ${off}
 
 ${bold}  Canary Mode:${off}       ${yellow}${CANARY_MODE/4/${red}4 -> Check library!}${off}
-${bold}  Precompiled Lib:${off}   ${PRECOMPILED_LIB:+${red}${PRECOMPILED_LIB/$PIRATE/\$PIRATE}}${PRECOMPILED_LIB:-${darkgrey}disabled}${off}
+${bold}  Precompiled Lib:${off}   ${red}${prepath:-${darkgrey}N/A}              ${off}
 ${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}                          ${off}
 ${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}                      ${off}
-${bold}  ISAN:${off}              ${ISAN:+${green}enabled}${ISAN:-${darkgrey}disabled} ${off}
+${bold}  ISAN:${off}              ${green}${ISAN:-${darkgrey}disabled} ${off}
 ${bold}  HARDEN:${off}            ${HARDEN:-${darkgrey}disabled}                ${off}
 ${bold}  Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}                        ${off}
 
