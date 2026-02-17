@@ -46,20 +46,19 @@ TIMEOUT="${TIMEOUT:-5m}"
 WORKERS="${WORKERS:-2}"
 LOGSIZE=$(( 10 << 20 )) # 10 MiB
 
-
 COUNTER_FILE="${SHARED}/campaign_counter"
 touch "$COUNTER_FILE"
-
 exec 9>"$COUNTER_FILE.lock"
 flock -x 9
 CAMPAIGN_NUMBER=$(($(cat "$COUNTER_FILE" 2>/dev/null || echo 0) + 1))
 echo "$CAMPAIGN_NUMBER" > "$COUNTER_FILE"
 exec 9>&-
 
-
 CAMPAIGN_ID="${IMG_NAME_TARGET:-unknown}/${PROGRAM_NAME}/campaign_${CAMPAIGN_NUMBER}"
-#
 CAMPAIGN_DIR="${SHARED}/campaigns/${CAMPAIGN_ID}"
+
+CAMPAIGN_DATE="$(date +%d.%m.%Y)"
+CAMPAIGN_TIME="$(date +%H:%M:%S)"
 
 # WARN: It is crucial to export MAGMA_STORAGE and set it to a value that is
 #       NOT SHARED by multiple conatiners (e.g. via -v option)!
@@ -120,6 +119,7 @@ ${blue}${bold}
  ==============================================================================
                                CAMPAIGN SETUP
  ============================================================================== ${off}
+${bold}  Campaign #:${off}           ${CAMPAIGN_NUMBER}                         ${off}
 ${bold}  Campaign ID:${off}          ${CAMPAIGN_ID}                             ${off}
 ${bold}  Campaign directory:${off}   ${CAMPAIGN_DIR/$SHARED/\$SHARED}           ${off}
 
@@ -147,9 +147,41 @@ ${bold}  Poll:${off}                 ${POLL}                                    
 ${bold}  Input directory:${off}      ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}      ${off}
 ${bold}  Log directory:${off}        ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}     ${off}
 ${bold}  Monitor Logfile:${off}      ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR} ${off}
-${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}${blue}${bold}
+${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}
+
+${bold}  Timestamp:                  ${CAMPAIGN_DATE}, ${CAMPAIGN_TIME}${off}${blue}${bold}
  ===============================================================================${off}
 EOF
+}
+
+################################################################################
+# Campaign CSV file
+# NOTE: If csv-file writes get messed up, by campagins add flock functionality
+################################################################################
+write_csv() {
+    CAMPAIGN_CSV="${SHARED}/campaigns.csv"
+    if [ ! -s "$CAMPAIGN_CSV" ]; then
+        echo "#;Library;Bugs;Optimisation;ISAN;Canary Mode;Precompiled;Harness/Program;Date;Time;Runtime;Workers;Campaign ID;AFL_MAP_SIZE;AFL_QEMU_INST_RANGES;AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES" \
+        > "$CAMPAIGN_CSV"
+    fi
+    printf '%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s\n' \
+    "$CAMPAIGN_NUMBER" \
+    "$TARGET_NAME" \
+    "$PROGRAM_NAME" \
+    "${BUG:-all}" \
+    "$OPTIMIZATION" \
+    "${ISAN:-0}" \
+    "$CANARY_MODE" \
+    "${PRECOMPILED_LIB_NAME:-N/A}" \
+    "$CAMPAIGN_DATE" \
+    "$CAMPAIGN_TIME" \
+    "$TIMEOUT" \
+    "$WORKERS" \
+    "$CAMPAIGN_ID" \
+    "$AFL_MAP_SIZE" \
+    "$AFL_QEMU_INST_RANGES" \
+    "${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-0}" \
+    >> "$CAMPAIGN_CSV"
 }
 
 ##############################################################################
@@ -166,7 +198,6 @@ trap cleanup EXIT
 ##############################################################################
 # Monitor process
 ##############################################################################
-
 log_info "Starting canary monitor..." "$MONITORLOG"
 
 # Initialize monitor state
@@ -284,6 +315,7 @@ export AFL_QEMU_INST_RANGES=$target_addr
 log_info "Target address set to ${target_addr}" "$CAMPAIGNLOG"
 
 
+write_csv
 print_setup_summary
 if [ -t 0 ]; then
     read -rp "Check the setup above. Proceed with fuzzing campaign(s)? [Y/n]" answer
