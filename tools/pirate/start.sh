@@ -47,7 +47,18 @@ WORKERS="${WORKERS:-2}"
 LOGSIZE=$(( 10 << 20 )) # 10 MiB
 
 
-CAMPAIGN_ID="${IMG_NAME_TARGET:-unknown}/${PROGRAM_NAME}/$(date +%y%m%d-%H%M%S)"
+COUNTER_FILE="${SHARED}/campaign_counter"
+touch "$COUNTER_FILE"
+
+exec 9>"$COUNTER_FILE.lock"
+flock -x 9
+CAMPAIGN_NUMBER=$(($(cat "$COUNTER_FILE" 2>/dev/null || echo 0) + 1))
+echo "$CAMPAIGN_NUMBER" > "$COUNTER_FILE"
+exec 9>&-
+
+
+CAMPAIGN_ID="${IMG_NAME_TARGET:-unknown}/${PROGRAM_NAME}/campaign_${CAMPAIGN_NUMBER}"
+#
 CAMPAIGN_DIR="${SHARED}/campaigns/${CAMPAIGN_ID}"
 
 # WARN: It is crucial to export MAGMA_STORAGE and set it to a value that is
