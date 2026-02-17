@@ -229,12 +229,13 @@ print_build_summary() {
 ${bold}  Magma Root:${off}        $MAGMA_R                                      ${off}
 ${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}    ${off}
 ${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}     ${off}
+
 ${bold}  Fuzzer:${off}            ${FUZZER_NAME}                                ${off}
 ${bold}  Target:${off}            ${yellow}${TARGET_NAME}                                ${off}
 ${bold}  Program/Harness:${off}   ${PROGRAM_NAME}                               ${off}
 
 ${bold}  Canary Mode:${off}       ${yellow}${CANARY_MODE/4/${red}4 -> Check library!}${off}
-${bold}  Precompiled Lib:${off}   ${red}${PRECOMPILED_LIB_NAME:-${darkgrey}disabled}${off}
+${bold}  Precompiled Lib:${off}   ${PRECOMPILED_LIB:+${red}${PRECOMPILED_LIB/$PIRATE/\$PIRATE}}${PRECOMPILED_LIB:-${darkgrey}disabled}${off}
 ${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}                          ${off}
 ${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}                      ${off}
 ${bold}  ISAN:${off}              ${ISAN:+${green}enabled}${ISAN:-${darkgrey}disabled} ${off}
