@@ -47,8 +47,8 @@ WORKERS="${WORKERS:-2}"
 LOGSIZE=$(( 10 << 20 )) # 10 MiB
 
 
-CAMPAIGN_ID="${IMG_NAME_TARGET:-unknown}/${PROGRAM_NAME}/$(date +%Y%m%d-%H%M%S)"
-CAMPAIGN_DIR="${SHARED}/campagins/${CAMPAIGN_ID}"
+CAMPAIGN_ID="${IMG_NAME_TARGET:-unknown}/${PROGRAM_NAME}/$(date +%y%m%d-%H%M%S)"
+CAMPAIGN_DIR="${SHARED}/campaigns/${CAMPAIGN_ID}"
 
 # WARN: It is crucial to export MAGMA_STORAGE and set it to a value that is
 #       NOT SHARED by multiple conatiners (e.g. via -v option)!
@@ -61,7 +61,7 @@ MONITOR="${CAMPAIGN_DIR}/monitor"
 FINDINGS="${CAMPAIGN_DIR}/findings"
 LOGDIR="${CAMPAIGN_DIR}/log"
 MONITORLOG="${LOGDIR}/monitor.log"
-FUZZERLOG="${LOGDIR}/fuzzer.log"
+CAMPAIGNLOG="${LOGDIR}/fuzzer.log"
 
 mkdir -p "$SHARED"
 mkdir -p "$MONITOR"
@@ -75,13 +75,13 @@ cd "$SHARED" || true
 # Verification
 ################################################################################
 if [ ! -f "${OUT}/$PROGRAM_NAME" ]; then
-    log_error "Error: PROGRAM not found: ${OUT}/${PROGRAM_NAME}" "$FUZZERLOG"
+    log_error "Error: PROGRAM not found: ${OUT}/${PROGRAM_NAME}" "$CAMPAIGNLOG"
     exit 1
 fi
 
 # Check harness architecture
 log_info "Harness info:"
-log_info "$(file "${OUT}/${PROGRAM_NAME}")" "$FUZZERLOG"
+log_info "$(file "${OUT}/${PROGRAM_NAME}")" "$CAMPAIGNLOG"
 
 
 if [ ! -f "${FUZZER}/repo/afl-qemu-trace" ]; then
@@ -93,34 +93,51 @@ fi
 # Summary export/print
 ################################################################################
 
-setup_summary() {
-    cat << EOF | tee "${CAMPAIGN_DIR}/campaign_summary.txt"
-===============================================================================
-                                  SUMMARY
-===============================================================================
-Campaign:                       ${CAMPAIGN_ID}
-Campaign directory:             ${CAMPAIGN_DIR}
+print_setup_summary() {
 
-Fuzzer:                         ${FUZZER_NAME}
-Target:                         ${TARGET_NAME}
-Program/Harness:                ${PROGRAM_NAME}
-Precompiled Library Path:       ${PRECOMPILED_LIB:-N/A}
-Optimization level:             -O${OPTIMIZATION}
-Magma setup:                    ${MAGMA_BUILD_FLAGS}
+    local red=$'\033[0;31m'
+    local green=$'\033[0;32m'
+    local yellow=$'\033[0;33m'
+    local blue=$'\033[0;34m'
+    local grey=$'\033[38;5;245m'
+    local darkgrey=$'\033[38;5;240m'
+    local bold=$'\033[1m'
+    local off=$'\033[0m'
 
-Timeout:                        ${TIMEOUT}
-Poll:                           ${POLL}
+    cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' > "${CAMPAIGN_DIR}/campaign_config.txt")
+${blue}${bold}
+ ==============================================================================
+                               CAMPAIGN SETUP
+ ============================================================================== ${off}
+${bold}  Campaign ID:${off}          ${CAMPAIGN_ID}                             ${off}
+${bold}  Campaign directory:${off}   ${CAMPAIGN_DIR/$SHARED/\$SHARED}           ${off}
 
-Input directory:                ${INPUT}
-Log directory:                  ${LOGDIR}
-Monitor Logfile:                ${MONITORLOG}
-Fuzzer Logfile (main):          ${FUZZERLOG}
+${bold}  Fuzzer:${off}               ${FUZZER_NAME}                             ${off}
+${bold}  Target:${off}               ${TARGET_NAME}                             ${off}
+${bold}  Program/Harness:${off}      ${yellow}${PROGRAM_NAME}                   ${off}
+${bold}  Precomp. Lib. Path:${off}   ${yellow}${PRECOMPILED_LIB:-${darkgrey}N/A}${off}
+${bold}  Optimization level:${off}   -O${OPTIMIZATION}                          ${off}
+${bold}  Magma setup:${off}          ${MAGMA_BUILD_FLAGS}                       ${off}
 
-QEMU_LD_PREFIX:                 ${QEMU_LD_PREFIX}
-LD_LIBRARY_PATH:                ${LD_LIBRARY_PATH}
+${bold}  QEMU_LD_PREFIX:${off}       ${QEMU_LD_PREFIX}                          ${off}
+${bold}  LD_LIBRARY_PATH:${off}      ${LD_LIBRARY_PATH}                         ${off}
 
-====
-Target Address:                 ${target_addr}
+${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov)           ${off}
+${bold}  Canary Mode:${off}          ${CANARY_MODE}                             ${off}
+${bold}  ISAN:${off}                 ${ISAN:-${darkgrey}disabled}               ${off}
+${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )                    ${off}
+${bold}  AFL_MAP_SIZE:${off}         ${AFL_MAP_SIZE}                            ${off}
+${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES}           ${off}
+${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:+${green}enabled}${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}    ${off}
+
+${bold}  Timeout:${off}              ${TIMEOUT}                                 ${off}
+${bold}  Poll:${off}                 ${POLL}                                    ${off}
+
+${bold}  Input directory:${off}      ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}      ${off}
+${bold}  Log directory:${off}        ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}     ${off}
+${bold}  Monitor Logfile:${off}      ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR} ${off}
+${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}${blue}${bold}
+ ===============================================================================${off}
 EOF
 }
 
@@ -128,10 +145,10 @@ EOF
 # Cleanup
 ##############################################################################
 cleanup() {
-    log_info "Cleaning up..." "$FUZZERLOG"
+    log_info "Cleaning up..." "$CAMPAIGNLOG"
     "${OUT}/monitor" --dump human "$MAGMA_STORAGE" > "${MONITOR}/results.txt"
     jobs -p | xargs -r kill 2>/dev/null || true
-    log_success "Everything clean. Exit." "${FUZZERLOG}"
+    log_success "Everything clean. Exit." "${CAMPAIGNLOG}"
 }
 trap cleanup EXIT
 
@@ -207,7 +224,7 @@ export AFL_QEMU_DRIVER_NO_HOOK=1 # Use stdin, not hook
 ##############################################################
 # Prepare Corpus / Inputs
 ##############################################################
-log_info "Preparing Corpus..." "$FUZZERLOG"
+log_info "Preparing Corpus..." "$CAMPAIGNLOG"
 
 MAGMA_CORPUS="${TARGET}/corpus/${CORPUS_NAME:-${PROGRAM_NAME}}"
 PIRATE_CORPUS="${PIRATE}/input/${TARGET_NAME}${BUG:+/${BUG}}"
@@ -217,21 +234,21 @@ rm -rf "$INPUT" && mkdir -p "$INPUT"
 
 # Copy original Magma seeds
 if [ -n "$INCLUDE_POV" ]; then
-    log_info "Copying PoV seeds into fuzzer input directory..." "$FUZZERLOG"
+    log_info "Copying PoV seeds into fuzzer input directory..." "$CAMPAIGNLOG"
     cp "$PIRATE_CORPUS"/* "$INPUT" 2>/dev/null || true
 fi
-log_info "Copying original Magma seeds into fuzzer input directory..." "$FUZZERLOG"
+log_info "Copying original Magma seeds into fuzzer input directory..." "$CAMPAIGNLOG"
 cp "$MAGMA_CORPUS"/* "$INPUT" 2>/dev/null || true
 
 # Minimise corpus (this also deletes PoVs!)
 # NOTE: Old code, Variables worng!
 # if ! ${FUZZER}/repo/afl-cmin -Q -i "$CORPUS" -o "$INPUT" \
 #     -- "${OUT}/${PROGRAM_NAME}" ${PROGRAM_ARGS} 2>&1; then
-#     log_warn "afl-cmin failed, using full corpus" "$FUZZERLOG"
+#     log_warn "afl-cmin failed, using full corpus" "$CAMPAIGNLOG"
 #     INPUT="$CORPUS"
 # fi
 
-log_success "Corpus prepared successfully." "$FUZZERLOG"
+log_success "Corpus prepared successfully." "$CAMPAIGNLOG"
 
 
 ############################################
@@ -245,7 +262,7 @@ AFL_QEMU_DEBUG_MAPS=1 \
 target_addr=$(awk -v lib="$target_lib" '$2 ~ /..x./ && $6 ~ "magma_out/"lib {print $1; exit}' "$CAMPAIGN_DIR"/trace)
 
 if [ "$(echo "$target_addr" | wc -w)" -ne 1 ]; then
-    log_error "Library address could not be extracted successfully" "$FUZZERLOG"
+    log_error "Library address could not be extracted successfully" "$CAMPAIGNLOG"
     exit 1
 fi
 
@@ -253,10 +270,19 @@ fi
 target_addr="0x${target_addr%-*}-0x${target_addr#*-}"
 
 export AFL_QEMU_INST_RANGES=$target_addr
-log_info "Target address set to ${target_addr}" "$FUZZERLOG"
+log_info "Target address set to ${target_addr}" "$CAMPAIGNLOG"
 
 
-setup_summary
+print_setup_summary
+if [ -t 0 ]; then
+    read -rp "Check the setup above. Proceed with fuzzing campaign(s)? [Y/n]" answer
+    case "${answer,,}" in
+        n|no)
+            log_info "Fuzzing campaign not started by user." "$CAMPAIGNLOG"
+            exit 0
+            ;;
+    esac
+fi
 ############################################################
 # Starting Campaign
 
@@ -264,8 +290,8 @@ setup_summary
 # - https://aflplus.plus/docs/fuzzing_binary-only_targets/
 # - QASAN throws an error, idk why
 ############################################################
-log_info "Campaign launched at $(date '+%F %R')" "$FUZZERLOG"
-log_info "Starting AFL++ QEMU mode fuzzer..." "$FUZZERLOG"
+log_info "Campaign launched at $(date '+%F %R')" "$CAMPAIGNLOG"
+log_info "Starting AFL++ QEMU mode fuzzer..." "$CAMPAIGNLOG"
 AFL_ARGS=(
     "-Q"               # QEMU mode
     "-i" "$INPUT"      # Input directory
@@ -273,7 +299,7 @@ AFL_ARGS=(
     "-m" "none"        # No memory limit
 )
 
-log_info "Starting campaigns with $(( 2 + WORKERS )) instances ..." "$FUZZERLOG"
+log_info "Starting campaigns with $(( 2 + WORKERS )) instances ..." "$CAMPAIGNLOG"
 
 set -o pipefail
 pids=()
@@ -310,7 +336,7 @@ for id in $(seq 1 "$WORKERS"); do
 done
 
 log_info "Campaign running with PIDs ${pids[*]}. Waiting for timeouts ..." \
-    "$FUZZERLOG"
+    "$CAMPAIGNLOG"
 
 
 ###################
@@ -327,7 +353,7 @@ for pid in "${pids[@]}"; do
     if [ $status -eq 124 ]; then
         ((TIMEOUT_COUNT++))
     elif [ $status -ne 0 ]; then
-        log_error "Process ${pid} failed with status ${status}" "$FUZZERLOG"
+        log_error "Process ${pid} failed with status ${status}" "$CAMPAIGNLOG"
         ((ERROR_COUNT++))
         FINAL_STATUS=$status
     fi
@@ -336,15 +362,15 @@ done
 if [ $ERROR_COUNT -gt 0 ]; then
     log_error \
         "Campaign FAILED: $ERROR_COUNT instance(s) crashed / failed to start." \
-        "$FUZZERLOG"
+        "$CAMPAIGNLOG"
     # Propagate the last error code found
     exit $FINAL_STATUS
 elif [ $TIMEOUT_COUNT -gt 0 ]; then
-    log_success "Campaign completed successfully" "$FUZZERLOG"
-    log_success "(Timeout reached for $TIMEOUT_COUNT instances)." "$FUZZERLOG"
+    log_success "Campaign completed successfully" "$CAMPAIGNLOG"
+    log_success "(Timeout reached for $TIMEOUT_COUNT instances)." "$CAMPAIGNLOG"
     exit 124
 else
     log_warn "Campaign ended with status 0 (Unexpected for timeout-driven runs)." \
-        "$FUZZERLOG"
+        "$CAMPAIGNLOG"
     exit 0
 fi

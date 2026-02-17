@@ -80,10 +80,9 @@ ${CXX} ${CXXFLAGS} -O2 -std=c++11 \
     -ltiffxx -ltiff -lz -lm -ljpeg -llzma
 
 # tiffcp
-cp "${WORK}/bin/tiffcp" "$OUT"
+cp "${WORK}/bin/tiffcp" "${OUT}/"
 
 echo "[*] Verifying harness..."
 file "${OUT}/tiff_read_rgba_fuzzer"
 /usr/bin/${TARGET_ARCH}-readelf -d "${OUT}/tiff_read_rgba_fuzzer" | grep NEEDED || true
-
 

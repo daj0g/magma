@@ -139,11 +139,13 @@ docker_build() {
     log_info "Build context: $MAGMA_R" "$BUILDLOG"
 
     # Check by user
-    print_summary
-    read -rp "Check the summary above. Proceed with build? [Y/n] " answer
-    case "${answer,}" in
-        n|no) log_info "Build cancelled by user." "$BUILDLOG"; exit 0 ;;
-    esac
+    print_build_summary
+    if [ -t 0 ]; then
+        read -rp "Check the summary above. Proceed with build? [Y/n] " answer
+        case "${answer,,}" in
+            n|no) log_info "Build cancelled by user." "$BUILDLOG"; exit 0 ;;
+        esac
+    fi
 
     # Build Docker base image
     # OS init, fuzzer (incl. qemu mode), Magma monitor
@@ -209,44 +211,45 @@ cleanup() {
 ################################################################################
 # Summary
 ################################################################################
-print_summary() {
+print_build_summary() {
     local red=$'\033[0;31m'
     local green=$'\033[0;32m'
     local yellow=$'\033[0;33m'
     local blue=$'\033[0;34m'
     local grey=$'\033[38;5;245m'
+    local darkgrey=$'\033[38;5;238m'
     local bold=$'\033[1m'
     local off=$'\033[0m'
 
     cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$BUILDLOG")
  ${blue}${bold}
- ================================================================================
-                                     SUMMARY
+ ==============================================================================
+                                     BUILD SUMMARY
+ ============================================================================== ${off}
+${bold}  Magma Root:${off}        $MAGMA_R                                      ${off}
+${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}    ${off}
+${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}     ${off}
+${bold}  Fuzzer:${off}            ${FUZZER_NAME}                                ${off}
+${bold}  Target:${off}            ${yellow}${TARGET_NAME}                                ${off}
+${bold}  Program/Harness:${off}   ${PROGRAM_NAME}                               ${off}
+
+${bold}  Canary Mode:${off}       ${yellow}${CANARY_MODE/4/${red}4 -> Check library!}${off}
+${bold}  Precompiled Lib:${off}   ${red}${PRECOMPILED_LIB_NAME:-${darkgrey}disabled}${off}
+${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}                          ${off}
+${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}                      ${off}
+${bold}  ISAN:${off}              ${ISAN:+${green}enabled}${ISAN:-${darkgrey}disabled} ${off}
+${bold}  HARDEN:${off}            ${HARDEN:-${darkgrey}disabled}                ${off}
+${bold}  Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}                        ${off}
+
+${bold}  Target Triplet:${off}    ${green}$TARGET_ARCH                          ${off}
+${bold}  Host Triplet:${off}      $(gcc -dumpmachine)                           ${off}
+
+${bold}  Docker Image:${off}      ${green}$IMG_NAME_TARGET                     ${off}
+${bold}  Dockerfile:${off}        ${DOCKERFILE_TARGET/$MAGMA_R/${grey}\$MAGMA_R${off}}${off}
+${bold}  Build context:${off}     $MAGMA_R                                      ${off}
+
+${bold}  Logfile:${off}           ${BUILDLOG/$WORKDIR/${grey}\$WORKDIR${off}} ${off}${blue}${bold}
  ================================================================================${off}
-  ${bold}Magma Root:${off}        $MAGMA_R
-  ${bold}Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}
-  ${bold}Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}
-  ${bold}Fuzzer:${off}            ${FUZZER_NAME}
-  ${bold}Target:${off}            ${TARGET_NAME}
-  ${bold}Program/Harness:${off}   ${PROGRAM_NAME}           # This should ideally be in run.sh, not build.sh
-  ${bold}Canary Mode:${off}       ${CANARY_MODE/4/4 ${red}  ! Check precompiled lib !${off}}
-  ${bold}Precompiled Lib:${off}   ${red}${PRECOMPILED_LIB_NAME:-${grey}N/A}${off}
-  ${bold}Bugs enabled:${off}      ${BUG:-all}
-  ${bold}Optimization:${off}      ${OPTIMIZATION}
-  ${bold}ISAN:${off}              ${ISAN:-${grey}N/A${off}}
-  ${bold}HARDEN:${off}            ${HARDEN:-${grey}N/A${off}}
-  ${bold}Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}
-
-  ${bold}Target Triplet:${off}    ${green}$TARGET_ARCH${off}
-  ${bold}Host Triplet:${off}      $(gcc -dumpmachine)
-
-  ${bold}Dockerfile:${off}        ${DOCKERFILE_TARGET/$MAGMA_R/${grey}\$MAGMA_R${off}}
-  ${bold}Docker Image:${off}      ${yellow}$IMG_NAME_TARGET${off}
-  ${bold}Build context:${off}     $MAGMA_R
-
-  ${bold}Logfile:${off}           ${BUILDLOG/$WORKDIR/${grey}\$WORKDIR${off}} ${blue}${bold}
- ================================================================================${off}
-
 EOF
 }
 
@@ -280,12 +283,11 @@ main() {
     setup_directories
 
     docker_build
-    print_summary
+    print_build_summary
     log_success "Build was successful!" "$BUILDLOG"
     log_info "Run the docker image ${IMG_NAME_TARGET}." "$BUILDLOG"
 }
 
-trap "exit 1" SIGINT SIGTERM
 trap "cleanup" EXIT
 
 main

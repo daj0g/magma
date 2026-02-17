@@ -45,7 +45,7 @@ IMG_NAME_TARGET="$(derive_image_name)"
 # Build (unless --no-build)
 ################################################################################
 if [ "$NO_BUILD" -eq 0 ]; then
-    if docker image inspect "$IMG_NAME_TARGET" &>/dev/null; then
+    if docker image inspect "$IMG_NAME_TARGET" &>/dev/null && [ -t 0 ]; then
         log_warn "Image already exists: ${IMG_NAME_TARGET}"
         read -rp "Rebuild and overwrite? [Y/n] " answer
         case "${answer,,}" in
