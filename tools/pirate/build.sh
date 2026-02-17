@@ -143,7 +143,7 @@ docker_build() {
     if [ -t 0 ]; then
         read -rp "Check the summary above. Proceed with build? [Y/n] " answer
         case "${answer,,}" in
-            n|no) log_info "Build cancelled by user." "$BUILDLOG"; exit 0 ;;
+            n|no) log_info "Build cancelled by user." "$BUILDLOG"; exit 2 ;;
         esac
     fi
 
