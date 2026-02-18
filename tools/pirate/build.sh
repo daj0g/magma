@@ -101,6 +101,63 @@ setup_directories() {
     return 0
 }
 
+################################################################################
+# Summary
+################################################################################
+print_build_summary() {
+    local red=$'\033[0;31m'
+    local green=$'\033[0;32m'
+    local yellow=$'\033[0;33m'
+    local blue=$'\033[0;34m'
+    local grey=$'\033[38;5;245m'
+    local darkgrey=$'\033[38;5;238m'
+    local bold=$'\033[1m'
+    local off=$'\033[0m'
+
+    local prepath=${PRECOMPILED_LIB/$PIRATE/${grey}\$PIRATE${red}}
+    prepath=${prepath/O$OPTIMIZATION/${yellow}O$OPTIMIZATION${red}}
+    prepath=${prepath/$BUG/${yellow}$BUG${red}}
+    prepath=${prepath/$TARGET_NAME/${yellow}$TARGET_NAME${red}}
+
+    local summary
+    summary=$(cat << EOF
+ ${blue}${bold}
+ ==============================================================================
+                                     BUILD SUMMARY
+ ============================================================================== ${off}
+${bold}  Magma Root:${off}        $MAGMA_R                                      ${off}
+${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}    ${off}
+${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}     ${off}
+
+${bold}  Fuzzer:${off}            ${FUZZER_NAME}                                ${off}
+${bold}  Target:${off}            ${yellow}${TARGET_NAME}                       ${off}
+${bold}  Program/Harness:${off}   ${PROGRAM_NAME}                               ${off}
+
+${bold}  Canary Mode:${off}       ${yellow}${CANARY_MODE/4/${red}4 -> Check library!}${off}
+${bold}  Precompiled Lib:${off}   ${red}${prepath:-${darkgrey}N/A}              ${off}
+${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}                          ${off}
+${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}                      ${off}
+${bold}  ISAN:${off}              ${green}${ISAN:-${darkgrey}disabled} ${off}
+${bold}  HARDEN:${off}            ${HARDEN:-${darkgrey}disabled}                ${off}
+${bold}  Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}                        ${off}
+
+${bold}  Target Triplet:${off}    ${green}$TARGET_ARCH                          ${off}
+${bold}  Host Triplet:${off}      $(gcc -dumpmachine)                           ${off}
+
+${bold}  Docker Image:${off}      ${green}$IMG_NAME_TARGET                     ${off}
+${bold}  Dockerfile:${off}        ${DOCKERFILE_TARGET/$MAGMA_R/${grey}\$MAGMA_R${off}}${off}
+${bold}  Build context:${off}     $MAGMA_R                                      ${off}
+
+${bold}  Logfile:${off}           ${BUILDLOG/$WORKDIR/${grey}\$WORKDIR${off}} ${off}${blue}${bold}
+ ================================================================================${off}
+EOF
+)
+    echo -e "$summary"
+    echo -e "$summary"| sed 's/\x1b\[[0-9;]*m//g' >> "$BUILDLOG"
+}
+
+
+
 
 ################################################################################
 # Docker build
@@ -205,58 +262,6 @@ cleanup() {
     jobs -p | xargs -r kill 2>/dev/null || true
 
     log_success "Everything clean. Exit." "${BUILDLOG}"
-}
-
-
-################################################################################
-# Summary
-################################################################################
-print_build_summary() {
-    local red=$'\033[0;31m'
-    local green=$'\033[0;32m'
-    local yellow=$'\033[0;33m'
-    local blue=$'\033[0;34m'
-    local grey=$'\033[38;5;245m'
-    local darkgrey=$'\033[38;5;238m'
-    local bold=$'\033[1m'
-    local off=$'\033[0m'
-
-    local prepath=${PRECOMPILED_LIB/$PIRATE/${grey}\$PIRATE${red}}
-    prepath=${prepath/O$OPTIMIZATION/${yellow}O$OPTIMIZATION${red}}
-    prepath=${prepath/$BUG/${yellow}$BUG${red}}
-    prepath=${prepath/$TARGET_NAME/${yellow}$TARGET_NAME${red}}
-
-    cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' >> "$BUILDLOG")
- ${blue}${bold}
- ==============================================================================
-                                     BUILD SUMMARY
- ============================================================================== ${off}
-${bold}  Magma Root:${off}        $MAGMA_R                                      ${off}
-${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}    ${off}
-${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}     ${off}
-
-${bold}  Fuzzer:${off}            ${FUZZER_NAME}                                ${off}
-${bold}  Target:${off}            ${yellow}${TARGET_NAME}                       ${off}
-${bold}  Program/Harness:${off}   ${PROGRAM_NAME}                               ${off}
-
-${bold}  Canary Mode:${off}       ${yellow}${CANARY_MODE/4/${red}4 -> Check library!}${off}
-${bold}  Precompiled Lib:${off}   ${red}${prepath:-${darkgrey}N/A}              ${off}
-${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}                          ${off}
-${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}                      ${off}
-${bold}  ISAN:${off}              ${green}${ISAN:-${darkgrey}disabled} ${off}
-${bold}  HARDEN:${off}            ${HARDEN:-${darkgrey}disabled}                ${off}
-${bold}  Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}                        ${off}
-
-${bold}  Target Triplet:${off}    ${green}$TARGET_ARCH                          ${off}
-${bold}  Host Triplet:${off}      $(gcc -dumpmachine)                           ${off}
-
-${bold}  Docker Image:${off}      ${green}$IMG_NAME_TARGET                     ${off}
-${bold}  Dockerfile:${off}        ${DOCKERFILE_TARGET/$MAGMA_R/${grey}\$MAGMA_R${off}}${off}
-${bold}  Build context:${off}     $MAGMA_R                                      ${off}
-
-${bold}  Logfile:${off}           ${BUILDLOG/$WORKDIR/${grey}\$WORKDIR${off}} ${off}${blue}${bold}
- ================================================================================${off}
-EOF
 }
 
 

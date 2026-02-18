@@ -114,9 +114,8 @@ print_setup_summary() {
     local bold=$'\033[1m'
     local off=$'\033[0m'
 
-    cat << EOF | tee \
-        >("${CAMPAIGN_DIR}/campaign_config.txt") \
-        >(sed 's/\x1b\[[0-9;]*m//g' >> "$CAMPAIGNLOG")
+    local summary
+    summary=$(cat << EOF
 ${blue}${bold}
  ==============================================================================
                                CAMPAIGN SETUP
@@ -151,11 +150,15 @@ ${bold}  Poll:${off}                 ${POLL}                                    
 ${bold}  Input directory:${off}      ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}      ${off}
 ${bold}  Log directory:${off}        ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}     ${off}
 ${bold}  Monitor Logfile:${off}      ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR} ${off}
-${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}
+${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
 
 ${bold}  Timestamp:                  ${CAMPAIGN_DATE}, ${CAMPAIGN_TIME}${off}${blue}${bold}
  ===============================================================================${off}
 EOF
+)
+    echo -e "$summary"
+    echo -e "$summary" > "${CAMPAIGN_DIR}/campaign_config.txt"
+    echo -e "$summary" | sed 's/\x1b\[[0-9;]*m//g' >> "$CAMPAIGNLOG"
 }
 
 ################################################################################
@@ -202,50 +205,53 @@ trap cleanup EXIT
 ##############################################################################
 # Monitor process
 ##############################################################################
-log_info "Starting canary monitor..." "$MONITORLOG"
+start_monitor() {
+    log_info "Starting canary monitor..." "$MONITORLOG"
 
-# Initialize monitor state
-rm -f "${MONITOR}/tmp"*
+    # Initialize monitor state
+    rm -f "${MONITOR}/tmp"*
 
-# Get starting counter
-shopt -s nullglob
-polls=("${MONITOR}"/*)
-shopt -u nullglob
-if [ ${#polls[@]} -eq 0 ]; then
-    counter=0
-else
-    timestamps=($(sort -n < <(basename -a "${polls[@]}" 2>/dev/null) 2>/dev/null))
-    last=${timestamps[-1]:-0}
-    counter=$(( last + POLL ))
-fi
+    # Get starting counter
+    shopt -s nullglob
+    polls=("${MONITOR}"/*)
+    shopt -u nullglob
+    if [ ${#polls[@]} -eq 0 ]; then
+        counter=0
+    else
+        timestamps=($(sort -n < <(basename -a "${polls[@]}" 2>/dev/null) 2>/dev/null))
+        last=${timestamps[-1]:-0}
+        counter=$(( last + POLL ))
+    fi
 
-# Monitor loop in background
-(
-    set +e
-    while true; do
-        "${OUT}/monitor" --dump row "$MAGMA_STORAGE" > "${MONITOR}/tmp"
-        status=$?
-        if [ $status -eq 0 ]; then
-            mv "${MONITOR}/tmp" "${MONITOR}/$counter"
-        else
-            rm "${MONITOR}/tmp"
-            log_warn "Monitor failed (exit=${status}) at counter=$counter" \
+    # Monitor loop in background
+    (
+        set +e
+        while true; do
+            "${OUT}/monitor" --dump row "$MAGMA_STORAGE" > "${MONITOR}/tmp"
+            status=$?
+            if [ $status -eq 0 ]; then
+                mv "${MONITOR}/tmp" "${MONITOR}/$counter"
+            else
+                rm "${MONITOR}/tmp"
+                log_warn "Monitor failed (exit=${status}) at counter=$counter" \
                 "$MONITORLOG"
-        fi
-        counter=$(( counter + POLL ))
-        sleep "$POLL"
-    done
-) &
-MONITOR_PID=$!
-log_success "Monitor successfully started (PID: ${MONITOR_PID})" "$MONITORLOG"
+            fi
+            counter=$(( counter + POLL ))
+            sleep "$POLL"
+        done
+    ) &
+    MONITOR_PID=$!
+    log_success "Monitor successfully started (PID: ${MONITOR_PID})" "$MONITORLOG"
 
-# monitor_exit() {
-#     kill "$MONITOR_PID" 2>/dev/null
-#     "${OUT}/monitor" --dump human > "${MONITOR}/result.txt"
-#     log_info "Monitor stopped (PID: $MONITOR_PID)" "$MONITORLOG"
-# }
-# trap monitor_exit EXIT
-# -> global cleanup
+    # monitor_exit() {
+    #     kill "$MONITOR_PID" 2>/dev/null
+    #     "${OUT}/monitor" --dump human > "${MONITOR}/result.txt"
+    #     log_info "Monitor stopped (PID: $MONITOR_PID)" "$MONITORLOG"
+    # }
+    # trap monitor_exit EXIT
+    # -> global cleanup
+}
+
 
 
 ################################################################################
@@ -266,7 +272,7 @@ export AFL_NO_WARN_INSTABILITY=1
 export AFL_NO_UI=1
 export AFL_MAP_SIZE=256000
 # export AFL_DRIVER_DONT_DEFER=1
-export AFL_INST_LIBS=1   # Make sure shared libraries are traced
+# export AFL_INST_LIBS=1   # Not needed with AFL_QEMU_INST_RANGES
 export AFL_QEMU_DRIVER_NO_HOOK=1 # Use stdin, not hook
 
 ##############################################################
@@ -327,7 +333,7 @@ target_addr="0x${target_addr%-*}-0x${target_addr#*-}"
 TARGET_ADDRESS=$target_addr
 # }}}
 
-log_info "Instrument rage: ${TARGET_ADDRESS} (${AFL_QEMU_INST_RANGES})" "$CAMPAIGNLOG"
+log_info "Instrument range: ${TARGET_ADDRESS} (${AFL_QEMU_INST_RANGES})" "$CAMPAIGNLOG"
 
 
 write_csv
@@ -348,6 +354,7 @@ fi
 # - https://aflplus.plus/docs/fuzzing_binary-only_targets/
 # - QASAN throws an error, idk why
 ############################################################
+start_monitor
 log_info "Campaign launched at $(date '+%F %R')" "$CAMPAIGNLOG"
 log_info "Starting AFL++ QEMU mode fuzzer..." "$CAMPAIGNLOG"
 AFL_ARGS=(
