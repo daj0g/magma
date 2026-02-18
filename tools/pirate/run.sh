@@ -7,6 +7,7 @@ set -e
 # Usage:
 #   ./run.sh [piraterc]              Build image + run campaign
 #   ./run.sh --no-build [piraterc]   Skip build, just run campaign
+#   ./run.sh --detach [piraterc]     Run campaign in background
 #   ./run.sh --shell [piraterc]      Skip build, open interactive shell
 #
 # Configuration is read from piraterc (default: ./piraterc).
@@ -19,9 +20,11 @@ source "${PIRATE}/scripts/util.sh"
 # Parse flags
 NO_BUILD=0
 INTERACTIVE=0
+DETACH=0
 while [[ "${1:-}" == --* ]]; do
     case "$1" in
         --no-build) NO_BUILD=1; shift ;;
+        --detach)   DETACH=1; shift;;
         --shell)    NO_BUILD=1; INTERACTIVE=1; shift ;;
         *)          log_error "Unknown flag: $1"; exit 1 ;;
     esac
@@ -81,7 +84,6 @@ done
 CONTAINER_NAME="${CONTAINER_BASE}_${CONTAINER_N}"
 
 DOCKER_ARGS=(
-    --rm
     --name "$CONTAINER_NAME"
     -v "${WORKDIR}:/magma_shared"
     # Runtime variables (override piraterc defaults baked into the image)
@@ -94,9 +96,18 @@ DOCKER_ARGS=(
     -e "INCLUDE_POV=${INCLUDE_POV:-}"
 )
 
+if [ "$DETACH" -eq 0 ]; then
+    DOCKER_ARGS+=(--rm)
+fi
+
 if [ "$INTERACTIVE" -eq 1 ]; then
     log_info "Opening interactive shell in ${IMG_NAME_TARGET}"
     docker run -it "${DOCKER_ARGS[@]}" "$IMG_NAME_TARGET"
+elif [ "$DETACH" -eq 1 ]; then
+    log_info "Starting detached campaign: ${CONTAINER_NAME} (timeout=${TIMEOUT:-5m})"
+    docker run -d "${DOCKER_ARGS[@]}" "$IMG_NAME_TARGET" \
+        /magma/tools/pirate/start.sh
+    log_info "Logs: docker logs -f ${CONTAINER_NAME}"
 else
     log_info "Starting campaign: ${IMG_NAME_TARGET} (timeout=${TIMEOUT:-5m})"
     docker run "${DOCKER_ARGS[@]}" "$IMG_NAME_TARGET" \
