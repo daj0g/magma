@@ -90,12 +90,12 @@ if [ ! -f "${OUT}/$PROGRAM_NAME" ]; then
 fi
 
 # Check harness architecture
-log_info "Harness info:"
+log_info "Harness info:" "$CAMPAIGNLOG"
 log_info "$(file "${OUT}/${PROGRAM_NAME}")" "$CAMPAIGNLOG"
 
 
 if [ ! -f "${FUZZER}/repo/afl-qemu-trace" ]; then
-    log_error "Error: afl-qemu-trace not found ${FUZZER}/repo/"
+    log_error "Error: afl-qemu-trace not found ${FUZZER}/repo/" "$CAMPAIGNLOG"
     exit 1
 fi
 
@@ -134,7 +134,7 @@ ${bold}  Magma setup:${off}          ${MAGMA_BUILD_FLAGS}                       
 ${bold}  QEMU_LD_PREFIX:${off}       ${QEMU_LD_PREFIX}                          ${off}
 ${bold}  LD_LIBRARY_PATH:${off}      ${LD_LIBRARY_PATH}                         ${off}
 
-${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov)           ${off}
+${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov + qasan)   ${off}
 ${bold}  Canary Mode:${off}          ${CANARY_MODE}                             ${off}
 ${bold}  ISAN:${off}                 ${yellow}${ISAN:-${darkgrey}disabled}      ${off}
 ${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )                    ${off}
@@ -260,6 +260,7 @@ start_monitor() {
 # Logging setup
 mkdir -p "${LOGDIR}/cmplog"
 mkdir -p "${LOGDIR}/compcov"
+mkdir -p "${LOGDIR}/qasan"
 for id in $(seq 1 "$WORKERS"); do
     mkdir -p "${LOGDIR}/worker${id}"
 done
@@ -267,7 +268,7 @@ done
 # AFL++ variables
 export AFL_SKIP_CPUFREQ=1
 # export AFL_NO_AFFINITY=1
-export AFL_KEEP_TIMEOUTS=1  # keep longer running inputs if they reach new converage
+# export AFL_KEEP_TIMEOUTS=1  # keep longer running inputs if they reach new converage
 export AFL_NO_WARN_INSTABILITY=1
 export AFL_NO_UI=1
 export AFL_MAP_SIZE=256000
@@ -295,7 +296,7 @@ log_info "Copying original Magma seeds into fuzzer input directory..." "$CAMPAIG
 cp "$MAGMA_CORPUS"/* "$INPUT" 2>/dev/null || true
 
 # Minimise corpus (this also deletes PoVs!)
-# NOTE: Old code, Variables worng!
+# WARN: Old code, Variables worng!
 # if ! ${FUZZER}/repo/afl-cmin -Q -i "$CORPUS" -o "$INPUT" \
 #     -- "${OUT}/${PROGRAM_NAME}" ${PROGRAM_ARGS} 2>&1; then
 #     log_warn "afl-cmin failed, using full corpus" "$CAMPAIGNLOG"
@@ -318,7 +319,7 @@ export AFL_QEMU_INST_RANGES
 # I kept it, because it is helpful for debugging and logging.
 # {{{
 AFL_QEMU_DEBUG_MAPS=1 \
-    ${FUZZER}/repo/afl-qemu-trace \
+    "${FUZZER}/repo/afl-qemu-trace" \
     "${OUT}/${PROGRAM_NAME}" < /dev/null > "$CAMPAIGN_DIR"/trace 2>&1
 
 target_lib="${TARGET_NAME}.*[.]so.*"
@@ -336,7 +337,6 @@ TARGET_ADDRESS=$target_addr
 log_info "Instrument range: ${TARGET_ADDRESS} (${AFL_QEMU_INST_RANGES})" "$CAMPAIGNLOG"
 
 
-write_csv
 print_setup_summary
 if [ -t 0 ]; then
     read -rp "Check the setup above. Proceed with fuzzing campaign(s)? [Y/n]" answer
@@ -347,13 +347,14 @@ if [ -t 0 ]; then
             ;;
     esac
 fi
+
 ############################################################
 # Starting Campaign
 
 # The setup follows the AFL++ recommendation
 # - https://aflplus.plus/docs/fuzzing_binary-only_targets/
-# - QASAN throws an error, idk why
 ############################################################
+write_csv
 start_monitor
 log_info "Campaign launched at $(date '+%F %R')" "$CAMPAIGNLOG"
 log_info "Starting AFL++ QEMU mode fuzzer..." "$CAMPAIGNLOG"
@@ -364,7 +365,7 @@ AFL_ARGS=(
     "-m" "none"        # No memory limit
 )
 
-log_info "Starting campaigns with $(( 2 + WORKERS )) instances ..." "$CAMPAIGNLOG"
+log_info "Starting campaigns with $(( 3 + WORKERS )) instances ..." "$CAMPAIGNLOG"
 
 set -o pipefail
 pids=()
@@ -388,6 +389,15 @@ timeout "$TIMEOUT" \
     -S compcov \
     -- "${OUT}/${PROGRAM_NAME}" ${PROGRAM_ARGS} 2>&1 | \
     tee >(multilog n4 s${LOGSIZE} "${LOGDIR}/compcov" 2>/dev/null) &
+pids+=($!)
+
+# Run third instance with QASAN
+AFL_USE_QASAN=1 \
+timeout "$TIMEOUT" \
+    "${FUZZER}/repo/afl-fuzz" "${AFL_ARGS[@]}" \
+    -S qasan \
+    -- "${OUT}/${PROGRAM_NAME}" ${PROGRAM_ARGS} 2>&1 | \
+    tee >(multilog n4 s${LOGSIZE} "${LOGDIR}/qasan" 2>/dev/null) &
 pids+=($!)
 
 # Run "dumb" workers (or as many as I want >=0)
