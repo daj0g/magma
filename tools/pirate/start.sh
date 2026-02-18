@@ -120,38 +120,38 @@ ${blue}${bold}
  ==============================================================================
                                CAMPAIGN SETUP
  ============================================================================== ${off}
-${bold}  Campaign #:${off}           ${CAMPAIGN_NUMBER}                         ${off}
-${bold}  Campaign ID:${off}          ${CAMPAIGN_ID}                             ${off}
-${bold}  Campaign directory:${off}   ${CAMPAIGN_DIR/$SHARED/\$SHARED}           ${off}
+${bold}  Campaign #:${off}           ${CAMPAIGN_NUMBER}${off}
+${bold}  Campaign ID:${off}          ${CAMPAIGN_ID}${off}
+${bold}  Campaign directory:${off}   ${CAMPAIGN_DIR/$SHARED/\$SHARED}${off}
 
-${bold}  Fuzzer:${off}               ${FUZZER_NAME}                             ${off}
-${bold}  Target:${off}               ${TARGET_NAME}                             ${off}
-${bold}  Program/Harness:${off}      ${yellow}${PROGRAM_NAME}                   ${off}
+${bold}  Fuzzer:${off}               ${FUZZER_NAME}${off}
+${bold}  Target:${off}               ${TARGET_NAME}${off}
+${bold}  Program/Harness:${off}      ${yellow}${PROGRAM_NAME}${off}
 ${bold}  Precomp. Lib. Path:${off}   ${yellow}${PRECOMPILED_LIB:-${darkgrey}N/A}${off}
-${bold}  Optimization level:${off}   -O${OPTIMIZATION}                          ${off}
-${bold}  Magma setup:${off}          ${MAGMA_BUILD_FLAGS}                       ${off}
+${bold}  Optimization level:${off}   -O${OPTIMIZATION}${off}
+${bold}  Magma setup:${off}          ${MAGMA_BUILD_FLAGS}${off}
 
-${bold}  QEMU_LD_PREFIX:${off}       ${QEMU_LD_PREFIX}                          ${off}
-${bold}  LD_LIBRARY_PATH:${off}      ${LD_LIBRARY_PATH}                         ${off}
+${bold}  QEMU_LD_PREFIX:${off}       ${QEMU_LD_PREFIX}${off}
+${bold}  LD_LIBRARY_PATH:${off}      ${LD_LIBRARY_PATH}${off}
 
-${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov + qasan)   ${off}
-${bold}  Canary Mode:${off}          ${CANARY_MODE}                             ${off}
-${bold}  ISAN:${off}                 ${yellow}${ISAN:-${darkgrey}disabled}      ${off}
-${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )                    ${off}
-${bold}  AFL_MAP_SIZE:${off}         ${AFL_MAP_SIZE}                            ${off}
-${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES} ${off}
-${bold}  TARGET_ADDRESS: ${off}      ${TARGET_ADDRESS}  (Instrument range)      ${off}
+${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov + qasan)${off}
+${bold}  Canary Mode:${off}          ${CANARY_MODE}${off}
+${bold}  ISAN:${off}                 ${yellow}${ISAN:-${darkgrey}disabled}${off}
+${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )${off}
+${bold}  AFL_MAP_SIZE:${off}         ${AFL_MAP_SIZE}${off}
+${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES}${off}
+${bold}  TARGET_ADDRESS: ${off}      ${TARGET_ADDRESS}  (Instrument range)${off}
 
-${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}    ${off}
 
-${bold}  Timeout:${off}              ${TIMEOUT}                                 ${off}
-${bold}  Poll:${off}                 ${POLL}                                    ${off}
+${bold}  Timeout:${off}              ${TIMEOUT}${off}
+${bold}  Poll:${off}                 ${POLL}${off}
 
-${bold}  Input directory:${off}      ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}      ${off}
-${bold}  Log directory:${off}        ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}     ${off}
-${bold}  Monitor Logfile:${off}      ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR} ${off}
+${bold}  Input directory:${off}      ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
+${bold}  Log directory:${off}        ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
+${bold}  Monitor Logfile:${off}      ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
 ${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
 
+${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${red}${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}${off}
 ${bold}  Timestamp:                  ${CAMPAIGN_DATE}, ${CAMPAIGN_TIME}${off}${blue}${bold}
  ===============================================================================${off}
 EOF

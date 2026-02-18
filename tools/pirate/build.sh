@@ -124,29 +124,29 @@ print_build_summary() {
  ${blue}${bold}
  ==============================================================================
                                      BUILD SUMMARY
- ============================================================================== ${off}
-${bold}  Magma Root:${off}        $MAGMA_R                                      ${off}
-${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}    ${off}
-${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}     ${off}
+ ==============================================================================${off}
+${bold}  Magma Root:${off}        $MAGMA_R${off}
+${bold}  Workdir:${off}           ${WORKDIR/$MAGMA_R/${grey}\$MAGMA_R${off}}${off}
+${bold}  Pirate dir:${off}        ${PIRATE/$MAGMA_R/${grey}\$MAGMA_R${off}}${off}
 
-${bold}  Fuzzer:${off}            ${FUZZER_NAME}                                ${off}
-${bold}  Target:${off}            ${yellow}${TARGET_NAME}                       ${off}
-${bold}  Program/Harness:${off}   ${PROGRAM_NAME}                               ${off}
+${bold}  Fuzzer:${off}            ${FUZZER_NAME}${off}
+${bold}  Target:${off}            ${yellow}${TARGET_NAME}${off}
+${bold}  Program/Harness:${off}   ${PROGRAM_NAME}${off}
 
 ${bold}  Canary Mode:${off}       ${yellow}${CANARY_MODE/4/${red}4 -> Check library!}${off}
-${bold}  Precompiled Lib:${off}   ${red}${prepath:-${darkgrey}N/A}              ${off}
-${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}                          ${off}
-${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}                      ${off}
-${bold}  ISAN:${off}              ${green}${ISAN:-${darkgrey}disabled} ${off}
-${bold}  HARDEN:${off}            ${HARDEN:-${darkgrey}disabled}                ${off}
-${bold}  Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}                        ${off}
+${bold}  Precompiled Lib:${off}   ${red}${prepath:-${darkgrey}N/A}${off}
+${bold}  Bugs enabled:${off}      ${yellow}${BUG:-all}${off}
+${bold}  Optimization:${off}      ${yellow}${OPTIMIZATION}${off}
+${bold}  ISAN:${off}              ${green}${ISAN:-${darkgrey}disabled}${off}
+${bold}  HARDEN:${off}            ${HARDEN:-${darkgrey}disabled}${off}
+${bold}  Magma Build Args:${off}  ${MAGMA_BUILD_ARGS[*]}${off}
 
-${bold}  Target Triplet:${off}    ${green}$TARGET_ARCH                          ${off}
-${bold}  Host Triplet:${off}      $(gcc -dumpmachine)                           ${off}
+${bold}  Target Triplet:${off}    ${green}$TARGET_ARCH${off}
+${bold}  Host Triplet:${off}      $(gcc -dumpmachine)${off}
 
-${bold}  Docker Image:${off}      ${green}$IMG_NAME_TARGET                     ${off}
+${bold}  Docker Image:${off}      ${green}$IMG_NAME_TARGET${off}
 ${bold}  Dockerfile:${off}        ${DOCKERFILE_TARGET/$MAGMA_R/${grey}\$MAGMA_R${off}}${off}
-${bold}  Build context:${off}     $MAGMA_R                                      ${off}
+${bold}  Build context:${off}     $MAGMA_R${off}
 
 ${bold}  Logfile:${off}           ${BUILDLOG/$WORKDIR/${grey}\$WORKDIR${off}} ${off}${blue}${bold}
  ================================================================================${off}
