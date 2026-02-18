@@ -9,8 +9,6 @@ set -e
 # - env TARGET_ARCH: cross-compilation triplet (e.g. arm-linux-gnueabihf)
 # - env PIRATE: path to pirate tool directory
 #
-# System dependencies (install in Dockerfile):
-#   apt-get install -y libjpeg-dev:armhf liblzma-dev:armhf zlib1g-dev:armhf
 ##
 
 if [ ! -d "$TARGET/repo" ]; then
@@ -33,7 +31,6 @@ cd "${TARGET}/repo"
     --prefix="${WORK}" \
     --enable-shared \
     --disable-static \
-    --disable-jbig \
     CFLAGS="${CFLAGS}" \
     CXXFLAGS="${CXXFLAGS}" \
     LDFLAGS="${LDFLAGS}"
@@ -65,9 +62,6 @@ fi
 # Build harness
 ################################################################################
 echo "[*] Building tiff_read_rgba_fuzzer harness..."
-# NOTE: I can not use tiffcp right now, because it can't handle
-# input from stdin.
-# TODO: Maybe possible with persisten mode
 
 # tiff_read_rgba_fuzzer
 ${CXX} ${CXXFLAGS} -O2 -std=c++11 \
@@ -85,4 +79,3 @@ cp "${WORK}/bin/tiffcp" "${OUT}/"
 echo "[*] Verifying harness..."
 file "${OUT}/tiff_read_rgba_fuzzer"
 /usr/bin/${TARGET_ARCH}-readelf -d "${OUT}/tiff_read_rgba_fuzzer" | grep NEEDED || true
-
