@@ -96,9 +96,9 @@ DOCKER_ARGS=(
     -e "INCLUDE_POV=${INCLUDE_POV:-}"
 )
 
-if [ "$DETACH" -eq 0 ]; then
-    DOCKER_ARGS+=(--rm)
-fi
+# if [ "$DETACH" -eq 0 ]; then
+#     DOCKER_ARGS+=(--rm)
+# fi
 
 if [ "$INTERACTIVE" -eq 1 ]; then
     log_info "Opening interactive shell in ${IMG_NAME_TARGET}"
