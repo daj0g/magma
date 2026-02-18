@@ -71,7 +71,7 @@ MONITOR="${CAMPAIGN_DIR}/monitor"
 FINDINGS="${CAMPAIGN_DIR}/findings"
 LOGDIR="${CAMPAIGN_DIR}/log"
 MONITORLOG="${LOGDIR}/monitor.log"
-CAMPAIGNLOG="${LOGDIR}/fuzzer.log"
+CAMPAIGNLOG="${LOGDIR}/campaign.log"
 
 mkdir -p "$SHARED"
 mkdir -p "$MONITOR"
@@ -114,7 +114,9 @@ print_setup_summary() {
     local bold=$'\033[1m'
     local off=$'\033[0m'
 
-    cat << EOF | tee >(sed 's/\x1b\[[0-9;]*m//g' > "${CAMPAIGN_DIR}/campaign_config.txt")
+    cat << EOF | tee \
+        >("${CAMPAIGN_DIR}/campaign_config.txt") \
+        >(sed 's/\x1b\[[0-9;]*m//g' >> "$CAMPAIGNLOG")
 ${blue}${bold}
  ==============================================================================
                                CAMPAIGN SETUP
@@ -138,7 +140,9 @@ ${bold}  Canary Mode:${off}          ${CANARY_MODE}                             
 ${bold}  ISAN:${off}                 ${yellow}${ISAN:-${darkgrey}disabled}      ${off}
 ${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )                    ${off}
 ${bold}  AFL_MAP_SIZE:${off}         ${AFL_MAP_SIZE}                            ${off}
-${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES}           ${off}
+${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES} ${off}
+${bold}  TARGET_ADDRESS: ${off}      ${TARGET_ADDRESS}  (Instrument range)      ${off}
+
 ${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}    ${off}
 
 ${bold}  Timeout:${off}              ${TIMEOUT}                                 ${off}
@@ -256,7 +260,9 @@ done
 
 # AFL++ variables
 export AFL_SKIP_CPUFREQ=1
-export AFL_NO_AFFINITY=1
+# export AFL_NO_AFFINITY=1
+export AFL_KEEP_TIMEOUTS=1  # keep longer running inputs if they reach new converage
+export AFL_NO_WARN_INSTABILITY=1
 export AFL_NO_UI=1
 export AFL_MAP_SIZE=256000
 # export AFL_DRIVER_DONT_DEFER=1
@@ -296,23 +302,32 @@ log_success "Corpus prepared successfully." "$CAMPAIGNLOG"
 ############################################
 # Extract and set library address for fuzzer
 ############################################
-target_lib="${TARGET_NAME}.*[.]so.*"
+AFL_QEMU_INST_RANGES=$(
+    find "$OUT" -maxdepth 1 -name "${TARGET_NAME}*.so.*" ! -type l \
+        2>/dev/null | head -1
+)
+export AFL_QEMU_INST_RANGES
+
+# NOTE: The following is the old approach to set AFL_QEMU_INST_RANGES.
+# I kept it, because it is helpful for debugging and logging.
+# {{{
 AFL_QEMU_DEBUG_MAPS=1 \
     ${FUZZER}/repo/afl-qemu-trace \
     "${OUT}/${PROGRAM_NAME}" < /dev/null > "$CAMPAIGN_DIR"/trace 2>&1
 
+target_lib="${TARGET_NAME}.*[.]so.*"
 target_addr=$(awk -v lib="$target_lib" '$2 ~ /..x./ && $6 ~ "magma_out/"lib {print $1; exit}' "$CAMPAIGN_DIR"/trace)
 
 if [ "$(echo "$target_addr" | wc -w)" -ne 1 ]; then
-    log_error "Library address could not be extracted successfully" "$CAMPAIGNLOG"
-    exit 1
+    log_warn "Library address could not be extracted successfully" "$CAMPAIGNLOG"
 fi
 
 # Add 0x prefix to the memory locations
 target_addr="0x${target_addr%-*}-0x${target_addr#*-}"
+TARGET_ADDRESS=$target_addr
+# }}}
 
-export AFL_QEMU_INST_RANGES=$target_addr
-log_info "Target address set to ${target_addr}" "$CAMPAIGNLOG"
+log_info "Instrument rage: ${TARGET_ADDRESS} (${AFL_QEMU_INST_RANGES})" "$CAMPAIGNLOG"
 
 
 write_csv
