@@ -1,5 +1,6 @@
 /tmp/
 /tools/*
 !/tools/pirate
+/tools/pirate/workdir/
 /fuzzers/
 /magma/
