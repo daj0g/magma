@@ -120,39 +120,41 @@ ${blue}${bold}
  ==============================================================================
                                CAMPAIGN SETUP
  ============================================================================== ${off}
-${bold}  Campaign #:${off}           ${CAMPAIGN_NUMBER}${off}
-${bold}  Campaign ID:${off}          ${CAMPAIGN_ID}${off}
-${bold}  Campaign directory:${off}   ${CAMPAIGN_DIR/$SHARED/\$SHARED}${off}
+${bold}  Campaign #:${off}               ${CAMPAIGN_NUMBER}${off}
+${bold}  Campaign ID:${off}              ${CAMPAIGN_ID}${off}
+${bold}  Campaign directory:${off}       ${CAMPAIGN_DIR/$SHARED/\$SHARED}${off}
 
-${bold}  Fuzzer:${off}               ${FUZZER_NAME}${off}
-${bold}  Target:${off}               ${TARGET_NAME}${off}
-${bold}  Program/Harness:${off}      ${yellow}${PROGRAM_NAME}${off}
-${bold}  Precomp. Lib. Path:${off}   ${yellow}${PRECOMPILED_LIB:-${darkgrey}N/A}${off}
-${bold}  Optimization level:${off}   -O${OPTIMIZATION}${off}
-${bold}  Magma setup:${off}          ${MAGMA_BUILD_FLAGS}${off}
+${bold}  Fuzzer:${off}                   ${FUZZER_NAME}${off}
+${bold}  Target:${off}                   ${TARGET_NAME}${off}
+${bold}  Program/Harness:${off}          ${yellow}${PROGRAM_NAME}${off}
+${bold}  Precomp. Lib. Path:${off}       ${yellow}${PRECOMPILED_LIB:-${darkgrey}N/A}${off}
+${bold}  Optimization level:${off}       -O${OPTIMIZATION}${off}
+${bold}  Magma setup:${off}              ${MAGMA_BUILD_FLAGS}${off}
 
-${bold}  QEMU_LD_PREFIX:${off}       ${QEMU_LD_PREFIX}${off}
-${bold}  LD_LIBRARY_PATH:${off}      ${LD_LIBRARY_PATH}${off}
+${bold}  QEMU_LD_PREFIX:${off}           ${QEMU_LD_PREFIX}${off}
+${bold}  LD_LIBRARY_PATH:${off}          ${LD_LIBRARY_PATH}${off}
 
-${bold}  Workers:${off}              ${WORKERS}  (+ cmplog + compcov + qasan)${off}
-${bold}  Canary Mode:${off}          ${CANARY_MODE}${off}
-${bold}  ISAN:${off}                 ${yellow}${ISAN:-${darkgrey}disabled}${off}
-${bold}  Seed count:${off}           $(ls "$INPUT" | wc -l )${off}
-${bold}  AFL_MAP_SIZE:${off}         ${AFL_MAP_SIZE}${off}
-${bold}  AFL_QEMU_INST_RANGES:${off} ${yellow}${AFL_QEMU_INST_RANGES}${off}
-${bold}  TARGET_ADDRESS: ${off}      ${TARGET_ADDRESS}  (Instrument range)${off}
+${bold}  Workers:${off}                  ${WORKERS}  (+ cmplog + compcov + qasan)${off}
+${bold}  Canary Mode:${off}              ${CANARY_MODE}${off}
+${bold}  ISAN:${off}                     ${yellow}${ISAN:-${darkgrey}disabled}${off}
+${bold}  Seed count:${off}               $(ls "$INPUT" | wc -l )${off}
+${bold}  AFL_MAP_SIZE:${off}             ${AFL_MAP_SIZE}${off}
+${bold}  AFL_QEMU_INST_RANGES:${off}     ${yellow}${AFL_QEMU_INST_RANGES}${off}
+${bold}  TARGET_ADDR: ${off}             ${TARGET_ADDR}  (Instrument range)${off}
+${bold}  AFL_QEMU_PERSISTENT_ADDR:${off} ${green}${AFL_QEMU_PERSISTENT_ADDR}${off}
+${bold}  AFL_QEMU_PERSISTENT_GPR:${off}  ${green}${AFL_QEMU_PERSISTENT_GPR:-${darkgrey}disabled}${off}
 
 
-${bold}  Timeout:${off}              ${TIMEOUT}${off}
-${bold}  Poll:${off}                 ${POLL}${off}
+${bold}  Timeout:${off}                  ${TIMEOUT}${off}
+${bold}  Poll:${off}                     ${POLL}${off}
 
-${bold}  Input directory:${off}      ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
-${bold}  Log directory:${off}        ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
-${bold}  Monitor Logfile:${off}      ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
-${bold}  Fuzzer Logfile:${off}       ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
+${bold}  Input directory:${off}          ${INPUT/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
+${bold}  Log directory:${off}            ${LOGDIR/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
+${bold}  Monitor Logfile:${off}          ${MONITORLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
+${bold}  Fuzzer Logfile:${off}           ${CAMPAIGNLOG/$CAMPAIGN_DIR/\$CAMPAIGN_DIR}${off}
 
 ${bold}  AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:${off} ${red}${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-${darkgrey}disabled}${off}
-${bold}  Timestamp:                  ${CAMPAIGN_DATE}, ${CAMPAIGN_TIME}${off}${blue}${bold}
+${bold}  Timestamp: ${CAMPAIGN_DATE}, ${CAMPAIGN_TIME}${off}${blue}${bold}
  ===============================================================================${off}
 EOF
 )
@@ -168,10 +170,10 @@ EOF
 write_csv() {
     CAMPAIGN_CSV="${SHARED}/campaigns.csv"
     if [ ! -s "$CAMPAIGN_CSV" ]; then
-        echo "#;Library;Harness/Program;Bugs;Optimisation;ISAN;Canary Mode;Precompiled;Date;Time;Runtime;Workers;Campaign ID;AFL_MAP_SIZE;AFL_QEMU_INST_RANGES;AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES" \
+        echo "#;Library;Harness/Program;Bugs;Optimisation;ISAN;Canary Mode;Precompiled;Date;Time;Runtime;Workers;Campaign ID;AFL_MAP_SIZE;AFL_QEMU_INST_RANGES;AFL_QEMU_PERSISTENT_ADDR;AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES" \
         > "$CAMPAIGN_CSV"
     fi
-    printf '%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s\n' \
+    printf '%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s;%s\n' \
     "$CAMPAIGN_NUMBER" \
     "$TARGET_NAME" \
     "$PROGRAM_NAME" \
@@ -187,6 +189,7 @@ write_csv() {
     "$CAMPAIGN_ID" \
     "$AFL_MAP_SIZE" \
     "$AFL_QEMU_INST_RANGES" \
+    "$AFL_QEMU_PERSISTENT_ADDR" \
     "${AFL_I_DONT_CARE_ABOUT_MISSING_CRASHES:-0}" \
     >> "$CAMPAIGN_CSV"
 }
@@ -306,8 +309,16 @@ cp "$MAGMA_CORPUS"/* "$INPUT" 2>/dev/null || true
 log_success "Corpus prepared successfully." "$CAMPAIGNLOG"
 
 
+
+###############################################
+# Extract process memory map (/proc/self/maps)
+###############################################
+AFL_QEMU_DEBUG_MAPS=1 \
+    "${FUZZER}/repo/afl-qemu-trace" \
+    "${OUT}/${PROGRAM_NAME}" < /dev/null > "$CAMPAIGN_DIR"/trace 2>&1
+
 ############################################
-# Extract and set library address for fuzzer
+# Library Only Instrumentation
 ############################################
 AFL_QEMU_INST_RANGES=$(
     find "$OUT" -maxdepth 1 -name "${TARGET_NAME}*.so.*" ! -type l \
@@ -318,28 +329,59 @@ export AFL_QEMU_INST_RANGES
 # NOTE: The following is the old approach to set AFL_QEMU_INST_RANGES.
 # I kept it, because it is helpful for debugging and logging.
 # {{{
-AFL_QEMU_DEBUG_MAPS=1 \
-    "${FUZZER}/repo/afl-qemu-trace" \
-    "${OUT}/${PROGRAM_NAME}" < /dev/null > "$CAMPAIGN_DIR"/trace 2>&1
+target_addr=$(awk -v lib="${OUT}/${TARGET_NAME}.*[.]so.*" \
+    '$2 ~ /..x./ && $6 ~ lib {split($1,a,"-"); print "0x"a[1]"-0x"a[2]; exit}' \
+    "${CAMPAIGN_DIR}/trace")
 
-target_lib="${TARGET_NAME}.*[.]so.*"
-target_addr=$(awk -v lib="$target_lib" '$2 ~ /..x./ && $6 ~ "magma_out/"lib {print $1; exit}' "$CAMPAIGN_DIR"/trace)
-
-if [ "$(echo "$target_addr" | wc -w)" -ne 1 ]; then
-    log_warn "Library address could not be extracted successfully" "$CAMPAIGNLOG"
+if [ -n "$target_addr" ]; then
+    TARGET_ADDR=$target_addr
+    log_info "TARGET_ADDR: ${TARGET_ADDR}" "${CAMPAIGNLOG}"
+else
+    log_warn "Library address could not be extracted successfully" \
+        "$CAMPAIGNLOG"
 fi
-
-# Add 0x prefix to the memory locations
-target_addr="0x${target_addr%-*}-0x${target_addr#*-}"
-TARGET_ADDRESS=$target_addr
 # }}}
 
-log_info "Instrument range: ${TARGET_ADDRESS} (${AFL_QEMU_INST_RANGES})" "$CAMPAIGNLOG"
+log_info "Instrument range: ${TARGET_ADDR} (${AFL_QEMU_INST_RANGES})" \
+    "$CAMPAIGNLOG"
+
+
+############################################
+# Enable AFL QEMU Persistent Mode
+############################################
+# ELF symbol value of LLVMFuzzerTestOneInput
+sym_offset=$(nm "${OUT}/${PROGRAM_NAME}" 2>/dev/null | \
+    awk '/LLVMFuzzerTestOneInput/{print "0x"$1; exit}')
+
+# Runtime base address
+base_addr=$(awk -v prog="${PROGRAM_NAME}" -v out="${OUT}" \
+      '$2 ~ /..x./ && $6 ~ out"/"prog {split($1,a,"-"); print "0x"a[1]; exit}' \
+      "$CAMPAIGN_DIR/trace")
+
+base_addr=$(awk -v prog="${PROGRAM_NAME}" -v out="${OUT}" \
+      '$2 ~ /..x./ && $6 ~ out"/"prog {split($1,a,"-"); print "0x"a[1]; exit}' \
+      "$CAMPAIGN_DIR/trace")
+
+if [ -n "$sym_offset" ] && [ -n "$base_addr" ]; then
+    # sys_offset + base_addr = runtime PC address
+    AFL_QEMU_PERSISTENT_ADDR=$(printf '0x%x' $(( base_addr + sym_offset )))
+
+    export AFL_QEMU_PERSISTENT_ADDR
+    export AFL_QEMU_PERSISTENT_GPR=1
+    export AFL_QEMU_PERSISTENT_CNT=1000
+    # deault is 1000 lower if campaigns have low stability
+
+    log_info "AFL_QEMU_PERSISTENT_ADDR: ${AFL_QEMU_PERSISTENT_ADDR}" "$CAMPAIGNLOG"
+    log_info "AFL_QEMU_PERSISTENT_GPR: ${AFL_QEMU_PERSISTENT_GPR}" "$CAMPAIGNLOG"
+else
+    log_warn "Could not compute \$AFL_QEMU_PERSISTENT_ADDR" "$CAMPAIGNLOG"
+fi
 
 
 print_setup_summary
 if [ -t 0 ]; then
-    read -rp "Check the setup above. Proceed with fuzzing campaign(s)? [Y/n]" answer
+    read -rp "Check the setup above. Proceed with fuzzing campaign(s)? [Y/n]" \
+        answer
     case "${answer,,}" in
         n|no)
             log_info "Fuzzing campaign not started by user." "$CAMPAIGNLOG"
