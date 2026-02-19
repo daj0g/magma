@@ -30,19 +30,58 @@ setup_variables() {
     TARGET_NAME="${TARGET_NAME:-libpng}"
     CANARY_MODE="${CANARY_MODE:-1}"
     OPTIMIZATION="${OPTIMIZATION:-1}"
+    PRECOMPILED_LIB="${PRECOMPILED_LIB:-}"
     ISAN="${ISAN:-}"
     HARDEN="${HARDEN:-}"
     TARGET_ARCH="arm-linux-gnueabihf"
     TARGET_ARCH_DEB="armhf"
     BUG=${BUG:-}
-    PRECOMPILED_LIB_NAME=${PRECOMPILED_LIB_NAME:-}
-    PRECOMPILED_LIB="${PRECOMPILED_LIB_NAME:+${PIRATE}/precompiled/${TARGET_NAME}/${BUG}/${PRECOMPILED_LIB_NAME}}"
+
+    (( OPTIMIZATION > 3 )) && OPTIMIZATION=3 || true        # cap at 3
+    (( CANARY_MODE > 4 )) && CANARY_MODE=1 || true          # set 1 by default
+
+    if [ "$CANARY_MODE" -eq 4 ]; then
+        if [ -z "$BUG" ]; then
+            log_error "\$BUG variable needs to be set in CANARY_MODE=4"
+            exit 1
+        fi
+        if [ -z "$OPTIMIZATION" ];  then
+            log_error "\$OPTIMIZATION variable needs to be set in CANARY_MODE=4"
+            exit 1
+        fi
+        if [ -z "$PRECOMPILED_LIB" ]; then
+            log_error "\$PRECOMPILED_LIB variable needs to be set in CANARY_MODE=4"
+            exit 1
+        fi
+    fi
+
+    # Auto detect precompiled library
+    if [ -n "$PRECOMPILED_LIB" ]; then
+        if [ "$CANARY_MODE" -ne 4 ]; then
+            log_warn "\$PRECOMPILED_LIB set, but \$CANARY_MODE not 4!"
+            log_info "Ignoring \$PRECOMPILED_LIB"
+            unset PRECOMPILED_LIB
+        else
+            PRECOMPILED_LIB="${PRECOMPILED_LIB:+$(
+                find "${PIRATE}/precompiled/${TARGET_NAME}/${BUG}" \
+                -maxdepth 1 -iname "*_O${OPTIMIZATION}.*" 2>/dev/null | head -1
+            )}"
+            if [ -z "$PRECOMPILED_LIB" ]; then
+                msg="No precompiled library found for O${OPTIMIZATION} "
+                msg+="in precompiled/${TARGET_NAME}/${BUG}/"
+                log_error "$msg"
+                exit 1
+            fi
+            log_info "Using precompiled library: ${PRECOMPILED_LIB}"
+        fi
+    fi
+
+    PRECOMPILED_LIB_NAME="${PRECOMPILED_LIB+$(basename "$PRECOMPILED_LIB")}"
 
     WORKDIR="${WORKDIR:-./workdir}"
     WORKDIR="$(realpath "$WORKDIR")"
     LOGDIR="$WORKDIR/log"
     POCDIR="$WORKDIR/poc"
-
 
     if [ -n "${BUG}" ]; then
         if [ ! -f "${MAGMA_R}/targets/${TARGET_NAME}/patches/bugs/${BUG}.patch" ]; then
@@ -51,28 +90,6 @@ setup_variables() {
         fi
     fi
 
-    if [ "$CANARY_MODE" -eq 4 ]; then
-        if [ -z "$BUG" ]; then
-            log_error "\$BUG variable needs to be set in CANARY_MODE=4"
-            exit 1
-        fi
-        if [ ! -f "$PRECOMPILED_LIB" ]; then
-            log_error "Precompiled lib missing ${PRECOMPILED_LIB:-'(empty)'}"
-            exit 1
-        fi
-        if [ -z "$OPTIMIZATION" ] || [ "$OPTIMIZATION" -gt 3 ]; then
-            log_error "Please set the correct optimization level."
-            log_error "${OPTIMIZATION:-'(empty)'} not possible"
-            exit 1
-        fi
-    else
-        if [ -n "$PRECOMPILED_LIB_NAME" ]; then
-            log_warn "Precompiled lib defined, but canary mode not 4!"
-        fi
-    fi
-
-    (( OPTIMIZATION > 3 )) && OPTIMIZATION=3 || true      # cap at 3
-    (( CANARY_MODE > 4 )) && CANARY_MODE=1 || true          # set 1 by default
 
 
     # Docker Settings

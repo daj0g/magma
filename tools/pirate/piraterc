@@ -4,27 +4,29 @@ WORKDIR=./workdir
 # [TARGET_NAME]: name of the target library to fuzz
 # needs to match a directory name if magma/targets
 # (default: libpng)
-TARGET_NAME=libtiff
+TARGET_NAME=libpng
 
 # [CANARY_MODE]: defines the mode of canaries at compile time (default: 1)
 # - 1: without fixes, with canaries
 # - 2: without fixes, without canaries
 # - 3: with fixes, without canaries
 # - 4: library provided -> (this is a slight abuse of the feature)
-CANARY_MODE=1
+CANARY_MODE=4
 
 # [BUG}: Specify bug that should be enabled.
 # If empty/unset:
 #   - CANARY_MODE 1-3: all bugs are enabled
-#   - CANARY_MODE 4:   Error, BUG has to be specified
-# BUG=PNG005
+#   - CANARY_MODE 4:   Error, BjkjUG has to be specified
+BUG=PNG006
 
-# [PRECOMPILED_LIB_NAME]: Name of precompiled library.
+# [PRECOMPILED_LIB]: If, set the precompiled library is used for fuzzing
 # Needs to be stored in precompiled/$TARGET_NAME/$BUG
-# PRECOMPILED_LIB_NAME=
+# Name has to contain ...O${OPTIMIZATION}...
+PRECOMPILED_LIB=1
 
 # [OPTIMIZATION]: gcc compile optimization level
-OPTIMIZATION=1
+# If unset, run.sh will build and run all three levels (O1/O2/O3).
+# OPTIMIZATION=1
 
 # [ISAN]: if set, build the benchmark with ISAN/fatal canaries (default: unset)
 # ISAN=1
@@ -38,11 +40,16 @@ OPTIMIZATION=1
 ####################
 # [PROGRAM_NAME]: name of harness
 # (default: first directory found in target/corpus/ directory)
-PROGRAM_NAME=tiff_read_rgba_fuzzer
+PROGRAM_NAME=libpng_read_fuzzer
 
 # [PROGRAM_ARGS]: additional arguments for the hanress
 # (default: unset)
-# PROGRAM_ARGS="-M @@ tmp.out"
+#
+# xmllint:
+# PROGRAM_ARGS="--valid --oldxml10 --push --memory @@"
+#
+# tiffcp:
+# PROGRAM_ARGS="-M @@ tmp.out" #
 
 # [CORPUS_NAME]: name of harnes of which the corpus directory is used.
 # This is useful, if the harness is not included in the original magma fiels.
