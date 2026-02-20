@@ -143,7 +143,7 @@ ${bold}  AFL_QEMU_INST_RANGES:${off}     ${yellow}${AFL_QEMU_INST_RANGES}${off}
 ${bold}  TARGET_ADDR: ${off}             ${TARGET_ADDR}  (Instrument range)${off}
 ${bold}  AFL_QEMU_PERSISTENT_ADDR:${off} ${green}${AFL_QEMU_PERSISTENT_ADDR}${off}
 ${bold}  AFL_QEMU_PERSISTENT_GPR:${off}  ${green}${AFL_QEMU_PERSISTENT_GPR:-${darkgrey}disabled}${off}
-
+${bold}  AFL_QEMU_PERSISTENT_HOOK${off}  ${green}${AFL_QEMU_PERSISTENT_HOOK:-${darkgrey}disabled}${off}
 
 ${bold}  Timeout:${off}                  ${TIMEOUT}${off}
 ${bold}  Poll:${off}                     ${POLL}${off}
@@ -369,6 +369,7 @@ if [ -n "$sym_offset" ] && [ -n "$base_addr" ]; then
     export AFL_QEMU_PERSISTENT_ADDR
     export AFL_QEMU_PERSISTENT_GPR=1
     export AFL_QEMU_PERSISTENT_CNT=1000
+    export AFL_QEMU_PERSISTENT_HOOK="${OUT}/persistent_hook.so"
     # deault is 1000 lower if campaigns have low stability
 
     log_info "AFL_QEMU_PERSISTENT_ADDR: ${AFL_QEMU_PERSISTENT_ADDR}" "$CAMPAIGNLOG"

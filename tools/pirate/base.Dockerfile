@@ -146,6 +146,13 @@ RUN ${FUZZER}/build.sh
 RUN cd ${FUZZER}/repo/qemu_mode && \
     CROSS=${TARGET_CC} CPU_TARGET=${TARGET_ARCH%%-*} ./build_qemu_support.sh
 
+COPY --chown=magma:magma \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/persistent_hook_build.sh \
+    ${HOST_CONTEXT_ROOT}/tools/pirate/scripts/persistent_hook.c \
+    ${PIRATE}/scripts/
+
+RUN ${PIRATE}/scripts/persistent_hook_build.sh
+
 #===============================================================================
 # From now on everything is cross compiled
 #===============================================================================
