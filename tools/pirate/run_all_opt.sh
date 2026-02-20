@@ -16,6 +16,7 @@ PIRATE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${PIRATE}/scripts/util.sh"
 
 for opt in 1 2 3; do
-    log_info "=== Optimization level O${opt} ==="
+    log_info "============== Optimization level O${opt} ====================="
     OPTIMIZATION=$opt "${PIRATE}/run.sh" --detach "$@"
+    sleep 15
 done
