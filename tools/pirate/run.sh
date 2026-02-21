@@ -85,6 +85,7 @@ CONTAINER_NAME="${CONTAINER_BASE}_${CONTAINER_N}"
 
 DOCKER_ARGS=(
     --name "$CONTAINER_NAME"
+    --network=none
     -v "${WORKDIR}:/magma_shared"
     # Runtime variables (override piraterc defaults baked into the image)
     -e "PROGRAM_NAME=${PROGRAM_NAME:-}"
