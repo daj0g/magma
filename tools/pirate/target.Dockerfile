@@ -40,6 +40,8 @@ ENV CANARY_MODE="${canary_mode}"
 ENV OPTIMIZATION="${optimization}"
 ENV PRECOMPILED_LIB_NAME="${precompiled_lib}"
 ENV PRECOMPILED_LIB=${precompiled_lib:+${PIRATE}/precompiled/${TARGET_NAME}/${BUG}/${precompiled_lib}}
+ENV ISAN="${isan:-}"
+ENV HARDEN="${harden:-}"
 
 USER root:root
 # Create target directory
