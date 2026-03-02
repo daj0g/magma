@@ -12,4 +12,12 @@ OPTIMIZATION=1
 
 # Space-separated campaign numbers or ranges
 # (e.g. "315 316 317" or "315-320" or "315-318 400 500-502")
+# Per-input timeout in seconds (default: 10)
+#TIMEOUT_EACH=10
+
+# Save per-input stderr logs (useful with QASAN)
+#SAVE_STDERR=0
+
+# Space-separated campaign numbers or ranges
+# (e.g. "315 316 317" or "315-320" or "315-318 400 500-502")
 CAMPAIGNS="315 316 317 318 319 320"

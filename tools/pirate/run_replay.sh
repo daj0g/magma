@@ -137,6 +137,8 @@ for campaign_num in $CAMPAIGNS; do
             -e "PROGRAM_NAME=${PROGRAM_NAME}" \
             -e "PROGRAM_ARGS=${PROGRAM_ARGS:-}" \
             -e "QASAN=${qasan_flag}" \
+            -e "SAVE_STDERR=${SAVE_STDERR:-0}" \
+            -e "TIMEOUT_EACH=${TIMEOUT_EACH:-10}" \
             "$PATCHED_IMAGE" \
             /magma/tools/pirate/scripts/start_replay.sh
 
