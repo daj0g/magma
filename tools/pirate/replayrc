@@ -1,0 +1,15 @@
+## replayrc — Configuration for run_replay.sh
+## Replay campaign queues against a patched binary.
+
+WORKDIR=./workdir
+TARGET_NAME=libpng
+BUG=PNG006
+PROGRAM_NAME=libpng_read_fuzzer_pirate
+#PROGRAM_ARGS=
+
+# Patched binary to replay against
+OPTIMIZATION=1
+
+# Space-separated campaign numbers or ranges
+# (e.g. "315 316 317" or "315-320" or "315-318 400 500-502")
+CAMPAIGNS="315 316 317 318 319 320"
