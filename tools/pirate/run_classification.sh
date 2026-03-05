@@ -88,7 +88,7 @@ CANARY_MODE=3; oracle_image="$(derive_image_name)"
 # shellcheck disable=SC2034
 CANARY_MODE=4; patched_image="$(derive_image_name)"
 
-CLASSIFICATION_IMAGE="pirate/classification/${TARGET_NAME:-libpng}/${BUG:-all}/o${OPTIMIZATION:-1}"
+CLASSIFICATION_IMAGE="pirate/classification/${TARGET_NAME:-libpng}/${BUG,,:-all}/o${OPTIMIZATION:-1}"
 
 WORKDIR="$(realpath "${WORKDIR:-./workdir}")"
 CRASH_SOURCE="${CRASH_SOURCE:-fuzzing}"
