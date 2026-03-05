@@ -58,7 +58,6 @@ if [ ! -f "$RCFILE" ]; then
     exit 1
 fi
 set -a
-# shellcheck disable=SC1090
 source "$RCFILE"
 set +a
 
@@ -81,14 +80,11 @@ CAMPAIGNS="${expanded# }"
 # Derive image names for all three variants
 ################################################################################
 # CANARY_MODE is read by derive_image_name
-# shellcheck disable=SC2034
 CANARY_MODE=1; vuln_image="$(derive_image_name)"
-# shellcheck disable=SC2034
 CANARY_MODE=3; oracle_image="$(derive_image_name)"
-# shellcheck disable=SC2034
 CANARY_MODE=4; patched_image="$(derive_image_name)"
 
-CLASSIFICATION_IMAGE="pirate/classification/${TARGET_NAME:-libpng}/${BUG,,:-all}/o${OPTIMIZATION:-1}"
+CLASSIFICATION_IMAGE="pirate/classification/${TARGET_NAME:-libpng}/${BUG,,}/o${OPTIMIZATION:-1}"
 
 WORKDIR="$(realpath "${WORKDIR:-./workdir}")"
 CRASH_SOURCE="${CRASH_SOURCE:-fuzzing}"

@@ -77,7 +77,6 @@ run_variant() {
     *@@*)
         # File-based harness (e.g. tiffcp): replace @@ with the input path
         local actual_args="${PROGRAM_ARGS/@@/$input_file}"
-        # shellcheck disable=SC2086  # intentional word-splitting of args
         (
             cd "$TMPDIR_WORK" || exit
             timeout "$TIMEOUT_EACH" \
