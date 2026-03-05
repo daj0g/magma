@@ -1,0 +1,23 @@
+## classificationrc — Configuration for run_classification.sh
+## Replay campaign crashes against all three library variants (classification).
+
+WORKDIR=./workdir
+TARGET_NAME=libpng
+BUG=PNG006
+PROGRAM_NAME=libpng_read_fuzzer_pirate
+#PROGRAM_ARGS=
+
+# Optimization level for the three variant images
+OPTIMIZATION=1
+
+# Where to find crashes:
+#   "fuzzing" — Phase 3: campaigns/.../findings/<instance>/crashes/
+#   "replay"  — Phase 2: replay/<target>/<bug>/o<OPT>/campaign_<N>/<instance>/crashes/
+CRASH_SOURCE=fuzzing
+
+# Per-input timeout in seconds (default: 10)
+#TIMEOUT_EACH=10
+
+# Space-separated campaign numbers or ranges
+# (e.g. "315 316 317" or "315-320" or "315-318 400 500-502")
+CAMPAIGNS="315-320"
