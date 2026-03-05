@@ -22,7 +22,6 @@ if [ -z "$PRECOMPILED_LIB" ]; then
     autoreconf -f -i
     ./configure \
     --host="${TARGET_ARCH}" \
-    --with-libpng-prefix=MAGMA_ \
     --enable-shared \
     --disable-static \
     CFLAGS="${CFLAGS}" \
