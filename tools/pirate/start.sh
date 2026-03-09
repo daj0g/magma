@@ -270,11 +270,11 @@ done
 
 # AFL++ variables
 export AFL_SKIP_CPUFREQ=1
-# export AFL_NO_AFFINITY=1
+export AFL_NO_AFFINITY=1
 # export AFL_KEEP_TIMEOUTS=1  # keep longer running inputs if they reach new converage
 export AFL_NO_WARN_INSTABILITY=1
 export AFL_NO_UI=1
-export AFL_MAP_SIZE=256000
+# export AFL_MAP_SIZE=256000
 # export AFL_DRIVER_DONT_DEFER=1
 # export AFL_INST_LIBS=1   # Not needed with AFL_QEMU_INST_RANGES
 export AFL_QEMU_DRIVER_NO_HOOK=1 # Use stdin, not hook
@@ -425,7 +425,7 @@ timeout "$TIMEOUT" \
 pids+=($!)
 
 # Run second instance with CompCov/LAF
-AFL_PRELOAD="${FUZZER}/repo/libcmpcov.so" \
+AFL_PRELOAD="${AFL_PRELOAD:+${AFL_PRELOAD}:}${FUZZER}/repo/libcmpcov.so" \
 AFL_COMPCOV_LEVEL=2 \
 timeout "$TIMEOUT" \
     "${FUZZER}/repo/afl-fuzz" "${AFL_ARGS[@]}" \
